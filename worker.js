@@ -1,10 +1,14 @@
 // =================================================================================
-// R2-UI-WORKER v3.7 (Interaction Enhanced by Gemini)
+// R2-UI-WORKER v3.9 (Hierarchical Navigation Enhanced by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
+// - (Feature) Hierarchical Navigation: Implemented a true folder navigation system. Users can click folders to enter them and use breadcrumbs or an 'Up' button to navigate back.
+// - (Feature) Contextual Uploads & Folder Creation: New files and folders are now created within the currently viewed directory.
+// - (UI) Breadcrumb Navigation: Added a breadcrumb trail to show the current path and allow for quick navigation to parent directories.
+// - (Fix) Corrected file/folder rendering logic to display only items in the current path.
+// - (Feature) Video Player: Added a modal video player for direct playback of video files (e.g., MP4).
 // - (Feature) Create & Move Interaction: After creating a folder, any pre-selected items will be automatically moved into it.
 // - (Fix) Robust Move API: The backend /api/move endpoint now correctly handles moving non-empty folders and their contents.
-// - Maintained original code structure and worker.js format as requested.
 // =================================================================================
 
 export default {
@@ -74,7 +78,6 @@ export default {
         }
     }
 
-    // MODIFIED: Enhanced logic to properly move folders and their contents.
     if (request.method === 'POST' && url.pathname === '/api/move') {
       try {
         const { oldKey, newKey } = await request.json();
@@ -83,29 +86,20 @@ export default {
         
         const isFolder = oldKey.endsWith('/');
         if (isFolder) {
-            // Prevent moving a folder into itself
             if (newKey.startsWith(oldKey)) {
                 return new Response('Invalid move. Cannot move a folder into itself.', { status: 400 });
             }
-
-            // List all objects in the folder
-            const list = await BUCKET.list({ prefix: oldKey, limit: 1000 }); // R2 list limit is 1000
+            const list = await BUCKET.list({ prefix: oldKey, limit: 1000 });
             let objectsToMove = list.objects;
-
-            // Handle empty folders which might not appear in the list
             if (objectsToMove.length === 0) {
                 const emptyFolderObject = await BUCKET.head(oldKey);
                 if (emptyFolderObject) {
                     objectsToMove = [{ key: oldKey, size: emptyFolderObject.size }];
                 }
             }
-            
-            // If there's nothing to move, return success.
             if (objectsToMove.length === 0) {
                 return new Response(`Folder ${oldKey} not found or is empty.`, { status: 200 });
             }
-            
-            // Batch copy all objects to the new location
             for (const obj of objectsToMove) {
                 const objectToCopy = await BUCKET.get(obj.key);
                 if (objectToCopy) {
@@ -116,15 +110,11 @@ export default {
                     });
                 }
             }
-            
-            // Batch delete all old objects
             const keysToDelete = objectsToMove.map(obj => obj.key);
             await BUCKET.delete(keysToDelete);
-            
             return new Response(`Moved folder ${oldKey} to ${newKey} successfully.`, { status: 200 });
 
         } else {
-            // Original logic for moving a single file
             const object = await BUCKET.get(oldKey);
             if (!object) return new Response('Object not found', { status: 404 });
             await BUCKET.put(newKey, object.body, { httpMetadata: object.httpMetadata, customMetadata: object.customMetadata });
@@ -142,7 +132,6 @@ export default {
     const object = await env.BUCKET.get(key);
     if (object === null) return new Response('Object Not Found', { status: 404 });
     
-    // Do not allow downloading of zero-byte folder placeholder files
     if (object.size === 0 && key.endsWith('/')) {
         return new Response('This is a folder, not a downloadable file.', { status: 400 });
     }
@@ -197,10 +186,15 @@ export default {
     #view-toggle-button svg { width: 20px; height: 20px; vertical-align: middle; }
     #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #select-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
+    /* [新] 面包屑导航样式 */
+    #breadcrumb { margin-bottom: 20px; padding: 10px 15px; background-color: var(--card-bg); border-radius: 8px; font-size: 0.9em; word-break: break-all;}
+    #breadcrumb a { color: var(--c-primary); text-decoration: none; }
+    #breadcrumb a:hover { text-decoration: underline; }
+    #breadcrumb span { color: var(--text-light); }
     .uploader { border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 20px; }
     .uploader.dragging { background-color: var(--c-primary); color: #fff; }
     .file-container.list-view { display: block; }
-    .file-container.list-view .file-item { display: flex; align-items: center; padding: 10px; background-color: var(--card-bg); border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
+    .file-container.list-view .file-item { display: flex; align-items: center; padding: 10px; background-color: var(--card-bg); border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
     .list-view .icon { flex-shrink: 0; width: 20px; height: 20px; display:flex; align-items:center; justify-content:center; margin: 0 10px; }
     .list-view .icon svg, .grid-view .icon svg { width: 20px; height: 20px; color: var(--c-primary); }
     .list-view .info { flex-grow: 1; margin: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -208,7 +202,7 @@ export default {
     .list-view .filesize { font-size: 0.9em; color: var(--text-light); }
     .list-view .checkbox { margin-left: 0; margin-right: 10px; }
     .file-container.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-    .grid-view .file-item { position: relative; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; }
+    .grid-view .file-item { position: relative; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; cursor: pointer; }
     .grid-view .file-item:hover { transform: translateY(-5px); }
     .grid-view .file-item.selected { border-color: var(--c-primary); transform: translateY(0) !important; }
     .grid-view .icon { height: 120px; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.1); }
@@ -285,12 +279,19 @@ export default {
 
   <div id="app-view" class="hidden">
     <header><h1>文件列表</h1><div class="actions"><button id="create-folder-button">新建文件夹</button><button id="view-toggle-button" title="切换视图"></button><button id="select-all-button">全选</button><button id="delete-button">删除选中</button></div></header>
+    <!-- [新] 面包屑导航容器 -->
+    <div id="breadcrumb"></div>
     <input type="file" id="file-input" multiple class="hidden"><div class="uploader" id="drop-zone"><p>拖拽文件到此处，或点击上传</p></div>
     <div id="file-container"></div>
   </div>
 
   <div id="lightbox" class="hidden">
     <button id="lightbox-close" class="lightbox-nav">&times;</button><button id="lightbox-prev" class="lightbox-nav">&#10094;</button><button id="lightbox-next" class="lightbox-nav">&#10095;</button><img id="lightbox-image" src="" alt="Image preview">
+  </div>
+  
+  <div id="video-player" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000;">
+    <button id="video-close" style="position: absolute; top: 20px; right: 20px; color: #fff; background: transparent; border: none; font-size: 2em; cursor: pointer; z-index: 1001;">&times;</button>
+    <video id="video-element" controls style="max-width: 90%; max-height: 90%;" src=""></video>
   </div>
 
 <script>
@@ -304,9 +305,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renameDialog: document.getElementById('rename-dialog'), newFilename: document.getElementById('new-filename'), renameCancel: document.getElementById('rename-cancel'), renameConfirm: document.getElementById('rename-confirm'),
     createFolderButton: document.getElementById('create-folder-button'), createFolderDialog: document.getElementById('create-folder-dialog'), newFolderName: document.getElementById('new-folder-name'), createFolderCancel: document.getElementById('create-folder-cancel'), createFolderConfirm: document.getElementById('create-folder-confirm'),
     moveDialog: document.getElementById('move-dialog'), moveItemName: document.getElementById('move-item-name'), folderDestination: document.getElementById('folder-destination'), moveCancel: document.getElementById('move-cancel'), moveConfirm: document.getElementById('move-confirm'),
+    videoPlayer: document.getElementById('video-player'), videoElement: document.getElementById('video-element'), videoClose: document.getElementById('video-close'),
+    breadcrumb: document.getElementById('breadcrumb'), // [新] 面包屑元素引用
     password: '', files: [], imageFiles: [], currentImageIndex: -1,
     theme: localStorage.getItem('theme') || 'dark', viewMode: localStorage.getItem('viewMode') || 'grid',
     isAllSelected: false, currentFileKey: null, currentMenu: null,
+    currentPath: '', // [新] 追踪当前路径，空字符串代表根目录
   };
 
   const showToast = (message, duration = 3000) => {
@@ -343,8 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const closeLightbox = () => { G.lightbox.classList.add('hidden'); document.body.style.overflow = 'auto'; };
   const showNextImage = () => openLightbox((G.currentImageIndex + 1) % G.imageFiles.length);
   const showPrevImage = () => openLightbox((G.currentImageIndex - 1 + G.imageFiles.length) % G.imageFiles.length);
+  
+  // [修改] getFolderList 现在返回所有文件夹，用于“移动到”对话框
   const getFolderList = () => {
-    const folderSet = new Set(['/']); // Root folder
+    const folderSet = new Set(['']); // 根目录用空字符串代表
     G.files.forEach(file => {
         if (file.key.endsWith('/')) {
             folderSet.add(file.key);
@@ -354,25 +360,83 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     return Array.from(folderSet).sort();
   };
+  
+  // [新] 渲染面包屑导航
+  const renderBreadcrumb = () => {
+    let html = '<a href="#" data-path="">根目录</a>';
+    let current = '';
+    if (G.currentPath) {
+        const parts = G.currentPath.slice(0, -1).split('/');
+        for (const part of parts) {
+            current += part + '/';
+            html += \`<span> / </span><a href="#" data-path="\${current}">\${part}</a>\`;
+        }
+    }
+    G.breadcrumb.innerHTML = html;
+  };
 
+  // [修改] renderFiles 核心渲染逻辑，现在基于 G.currentPath
   const renderFiles = () => {
     G.fileContainer.innerHTML = '';
-    if (G.files.length === 0) { G.fileContainer.innerHTML = '<p style="text-align:center;color:var(--text-light);">存储桶为空。</p>'; return; }
-    G.imageFiles = G.files.filter(f => getFileIcon(f.key) === 'image');
-    // Sort folders first, then by upload date (newest first)
-    const sortedFiles = [...G.files].sort((a, b) => {
-        const aIsFolder = a.key.endsWith('/');
-        const bIsFolder = b.key.endsWith('/');
-        if (aIsFolder && !bIsFolder) return -1;
-        if (!aIsFolder && bIsFolder) return 1;
-        return new Date(b.uploaded) - new Date(a.uploaded);
+    renderBreadcrumb(); // 渲染面包屑
+    
+    const itemsInCurrentPath = [];
+    const foldersInCurrentPath = new Set();
+    
+    // 筛选出当前路径下的文件和文件夹
+    G.files.forEach(file => {
+        if (file.key.startsWith(G.currentPath)) {
+            const relativePath = file.key.substring(G.currentPath.length);
+            if (relativePath === '') return; // 跳过当前文件夹自身
+
+            const parts = relativePath.split('/');
+            if (parts.length === 1) { // 文件在当前目录
+                if (relativePath !== '') itemsInCurrentPath.push(file);
+            } else { // 子目录或子目录中的文件
+                const folderName = parts[0] + '/';
+                if (!foldersInCurrentPath.has(folderName)) {
+                    foldersInCurrentPath.add(folderName);
+                    itemsInCurrentPath.push({
+                        key: G.currentPath + folderName,
+                        size: 0, // 虚拟文件夹大小为0
+                        uploaded: file.uploaded // 使用第一个找到的文件的日期作为文件夹日期
+                    });
+                }
+            }
+        }
     });
 
-    sortedFiles.forEach(file => {
-      const fileType = getFileIcon(file.key); const isImage = fileType === 'image'; const isFolder = fileType === '#icon-folder'; const item = document.createElement('div');
-      item.className = \`file-item \${G.isAllSelected ? 'selected' : ''}\`; item.dataset.key = file.key;
-      const iconHTML = isImage && G.viewMode === 'grid' ? \`<img src="/\${encodeURIComponent(file.key)}" alt="\${file.key}" loading="lazy">\` : \`<svg><use xlink:href="\${isFolder ? '#icon-folder' : (isImage ? '#icon-file' : fileType)}"></use></svg>\`;
-      const actionsHTML = \`
+    if (G.currentPath !== '') { // 如果不在根目录，添加 "返回上一级"
+      const parentPath = G.currentPath.substring(0, G.currentPath.lastIndexOf('/', G.currentPath.length - 2) + 1);
+      itemsInCurrentPath.unshift({ key: '..', isNav: true, path: parentPath });
+    }
+
+    if (itemsInCurrentPath.length === 0) { G.fileContainer.innerHTML = '<p style="text-align:center;color:var(--text-light);">此文件夹为空。</p>'; return; }
+    
+    G.imageFiles = itemsInCurrentPath.filter(f => !f.isNav && getFileIcon(f.key) === 'image');
+    
+    const sortedItems = itemsInCurrentPath.sort((a, b) => {
+        if (a.isNav) return -1; if (b.isNav) return 1;
+        const aIsFolder = a.key.endsWith('/'); const bIsFolder = b.key.endsWith('/');
+        if (aIsFolder && !bIsFolder) return -1; if (!aIsFolder && bIsFolder) return 1;
+        return a.key.localeCompare(b.key);
+    });
+
+    sortedItems.forEach(file => {
+      const isNavUp = file.isNav && file.key === '..';
+      const displayName = isNavUp ? ".." : file.key.substring(G.currentPath.length);
+      
+      const fileType = isNavUp ? '#icon-folder' : getFileIcon(file.key);
+      const isImage = fileType === 'image'; 
+      const isFolder = fileType === '#icon-folder';
+      
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.dataset.key = file.key;
+      if (isNavUp) item.dataset.path = file.path;
+
+      const iconHTML = isImage && G.viewMode === 'grid' ? \`<img src="/\${encodeURIComponent(file.key)}" alt="\${displayName}" loading="lazy">\` : \`<svg><use xlink:href="\${isFolder ? '#icon-folder' : (isImage ? '#icon-file' : fileType)}"></use></svg>\`;
+      const actionsHTML = isNavUp ? '' : \`
         <div class="file-actions">
           <div class="menu-button" data-key="\${file.key}"></div>
           <div class="menu-items" data-key="\${file.key}">
@@ -383,13 +447,15 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="menu-item" data-action="delete" style="color: var(--c-error);">删除</div>
           </div>
         </div>\`;
-      item.innerHTML = (isImage && G.viewMode === 'grid') ? \`
+      const checkboxHTML = isNavUp ? '' : \`<input type="checkbox" class="checkbox" data-key="\${file.key}">\`;
+
+      item.innerHTML = (isImage && G.viewMode === 'grid' && !isNavUp) ? \`
         <div class="icon">\${iconHTML}</div>
-        <div class="info"><div class="filename" title="\${file.key}">\${file.key}</div><div class="filesize">\${formatBytes(file.size)}</div></div>
-        <input type="checkbox" class="checkbox" data-key="\${file.key}" \${G.isAllSelected ? 'checked' : ''}>\${actionsHTML}\` : \`
-        <input type="checkbox" class="checkbox" data-key="\${file.key}" \${G.isAllSelected ? 'checked' : ''}>
+        <div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${formatBytes(file.size)}</div></div>
+        \${checkboxHTML}\${actionsHTML}\` : \`
+        \${checkboxHTML}
         <div class="icon">\${iconHTML}</div>
-        <div class="info"><div class="filename" title="\${file.key}">\${file.key}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>
+        <div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>
         \${actionsHTML}\`;
       G.fileContainer.appendChild(item);
     });
@@ -398,15 +464,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const handleFileAction = (action, key) => {
     G.currentFileKey = key;
     switch(action) {
-      case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1) : key.split('/').pop(); G.renameDialog.classList.add('show'); break;
-      case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key; document.body.appendChild(a); a.click(); document.body.removeChild(a); break;
+      case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break;
+      case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break;
       case 'move':
         const folders = getFolderList();
         G.folderDestination.innerHTML = '';
         folders.forEach(folder => {
             const option = document.createElement('option');
             option.value = folder;
-            option.textContent = folder === '/' ? '(根目录)' : folder;
+            option.textContent = folder === '' ? '(根目录)' : folder;
             G.folderDestination.appendChild(option);
         });
         G.moveItemName.textContent = \`移动: \${key}\`;
@@ -417,10 +483,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-  // MODIFIED: Refactored to be a pure API wrapper that throws on error.
   const moveOrRenameFile = async (oldKey, newKey) => {
       if (!newKey || newKey === oldKey) { return; }
-      // This function now only makes the API call and relies on the calling function for feedback and list refresh.
       await apiCall('/api/move', { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
@@ -428,7 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   };
 
-  // MODIFIED: Added try/catch and user feedback via toasts.
   const handleRename = async () => {
       const oldKey = G.currentFileKey;
       const newName = G.newFilename.value.trim();
@@ -436,8 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!newName) return;
       
       const isFolder = oldKey.endsWith('/');
-      const path = oldKey.includes('/') ? oldKey.substring(0, oldKey.lastIndexOf('/') + 1) : '';
-      const newKey = path + newName + (isFolder ? '/' : '');
+      // [修改] 使用 currentPath 来构建新路径
+      const newKey = G.currentPath + newName + (isFolder ? '/' : '');
 
       try {
           await moveOrRenameFile(oldKey, newKey);
@@ -448,15 +511,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   };
   
-  // MODIFIED: Added try/catch and user feedback via toasts.
   const handleMove = async () => {
     const oldKey = G.currentFileKey;
     const destination = G.folderDestination.value;
     G.moveDialog.classList.remove('show');
 
-    const isFolder = oldKey.endsWith('/');
-    const filename = isFolder ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
-    const newKey = (destination === '/') ? filename : destination + filename;
+    const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
+    const newKey = destination + filename;
 
     try {
       await moveOrRenameFile(oldKey, newKey);
@@ -467,40 +528,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-  // MODIFIED: Now checks for selected files and moves them into the new folder after creation.
+  // [修改] 新建文件夹和移动选中的文件
   const handleCreateFolder = async () => {
-    const folderName = G.newFolderName.value.trim();
+    let folderName = G.newFolderName.value.trim();
     G.createFolderDialog.classList.remove('show');
     if (!folderName || folderName.includes('/')) {
-        showToast('创建失败: 文件夹名称无效。');
-        return;
+        showToast('创建失败: 文件夹名称无效。'); return;
     }
+    
+    // [修改] 在当前路径下创建
+    folderName = G.currentPath + folderName; 
 
     const selectedKeys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
 
     try {
-      // 1. Create the folder
       await apiCall('/api/create-folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ folderName }) });
       
-      // 2. If items were selected, move them into the new folder
+      const destinationFolder = \`\${folderName}/\`;
+
       if (selectedKeys.length > 0) {
-        showToast(\`文件夹 "\${folderName}" 创建成功。正在移动 \${selectedKeys.length} 个项目...\`);
-        const destinationFolder = \`\${folderName}/\`;
-        
+        showToast(\`文件夹 "\${destinationFolder}" 创建成功。正在移动 \${selectedKeys.length} 个项目...\`);
         const movePromises = selectedKeys.map(oldKey => {
-            const isFolder = oldKey.endsWith('/');
-            const baseName = isFolder ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
+            const baseName = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
             const newKey = destinationFolder + baseName;
             return moveOrRenameFile(oldKey, newKey);
         });
-
         await Promise.all(movePromises);
-        showToast(\`成功移动 \${selectedKeys.length} 个项目到 "\${folderName}"\`);
+        showToast(\`成功移动 \${selectedKeys.length} 个项目到 "\${destinationFolder}"\`);
       } else {
-        showToast(\`文件夹 "\${folderName}" 创建成功\`);
+        showToast(\`文件夹 "\${destinationFolder}" 创建成功\`);
       }
       
-      G.newFolderName.value = ''; // Clear input for next time
+      G.newFolderName.value = '';
       await refreshFileList();
     } catch(error) {
         showToast('操作失败: ' + error.message);
@@ -509,16 +568,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const toggleSelectAll = () => {
     G.isAllSelected = !G.isAllSelected;
-    document.querySelectorAll('.file-item').forEach(item => {
-      item.classList.toggle('selected', G.isAllSelected);
-      const checkbox = item.querySelector('.checkbox');
-      if (checkbox) checkbox.checked = G.isAllSelected;
+    document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').forEach(checkbox => {
+      checkbox.checked = G.isAllSelected;
+      checkbox.closest('.file-item').classList.toggle('selected', G.isAllSelected);
     });
     G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
   };
 
   const refreshFileList = async () => {
-    try { const response = await apiCall('/api/list'); G.files = await response.json(); G.isAllSelected = false; G.selectAllButton.textContent = '全选'; renderFiles(); }
+    try { 
+        const response = await apiCall('/api/list'); 
+        G.files = await response.json(); 
+        G.isAllSelected = false; 
+        G.selectAllButton.textContent = '全选'; 
+        renderFiles(); 
+    }
     catch (error) { console.error(error); showToast('刷新列表失败'); }
   };
   
@@ -530,9 +594,13 @@ document.addEventListener('DOMContentLoaded', () => {
     finally { G.loginButton.textContent = "进入"; G.loginButton.disabled = false; }
   };
   
+  // [修改] 上传文件到当前路径
   const handleUpload = async (files) => {
     showToast(\`开始上传 \${files.length} 个文件...\`);
-    const uploadPromises = Array.from(files).map(file => apiCall(\`/api/upload/\${encodeURIComponent(file.name)}\`, { method: 'PUT', body: file }));
+    const uploadPromises = Array.from(files).map(file => {
+        const uploadKey = G.currentPath + file.name;
+        return apiCall(\`/api/upload/\${encodeURIComponent(uploadKey)}\`, { method: 'PUT', body: file });
+    });
     try { await Promise.all(uploadPromises); showToast('所有文件上传成功！'); } catch(error) { showToast(\`上传失败: \${error.message}\`); }
     await refreshFileList();
   };
@@ -572,43 +640,68 @@ document.addEventListener('DOMContentLoaded', () => {
     G.createFolderConfirm.addEventListener('click', handleCreateFolder);
     G.moveCancel.addEventListener('click', () => G.moveDialog.classList.remove('show'));
     G.moveConfirm.addEventListener('click', handleMove);
+    G.videoClose.addEventListener('click', () => { G.videoPlayer.classList.add('hidden'); G.videoElement.pause(); G.videoElement.src = ''; });
+    
+    // [新] 面包屑点击导航
+    G.breadcrumb.addEventListener('click', e => {
+      e.preventDefault();
+      const target = e.target.closest('a');
+      if (target && typeof target.dataset.path !== 'undefined') {
+        G.currentPath = target.dataset.path;
+        renderFiles();
+      }
+    });
 
+    // [修改] 文件容器的点击事件处理，增加文件夹导航逻辑
     G.fileContainer.addEventListener('click', e => {
         const target = e.target;
         const fileItem = target.closest('.file-item');
         if (!fileItem) return;
         const key = fileItem.dataset.key;
         
-        if (target.matches('.checkbox')) {
-            fileItem.classList.toggle('selected', target.checked);
-            G.isAllSelected = document.querySelectorAll('.checkbox:checked').length === G.files.length;
-            G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
-            return;
-        }
-        
-        if (target.matches('.menu-button')) {
-            e.stopPropagation();
-            const menu = fileItem.querySelector('.menu-items');
-            if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show');
-            menu.classList.toggle('show');
-            G.currentMenu = menu;
-            return;
-        }
-
-        if(target.closest('.menu-item')) {
-            e.stopPropagation();
-            const action = target.closest('.menu-item').dataset.action;
-            if (action) {
-                handleFileAction(action, key);
-                target.closest('.menu-items').classList.remove('show');
-                G.currentMenu = null;
+        // 阻止冒泡，避免点击菜单或多选框时触发导航
+        if (target.matches('.checkbox') || target.closest('.file-actions')) {
+            if (target.matches('.checkbox')) {
+                fileItem.classList.toggle('selected', target.checked);
+                const totalCheckboxes = document.querySelectorAll('.checkbox').length;
+                const checkedCheckboxes = document.querySelectorAll('.checkbox:checked').length;
+                G.isAllSelected = totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes;
+                G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
+            }
+            if (target.matches('.menu-button')) {
+                e.stopPropagation();
+                const menu = fileItem.querySelector('.menu-items');
+                if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show');
+                menu.classList.toggle('show');
+                G.currentMenu = menu;
+            }
+            if(target.closest('.menu-item')) {
+                e.stopPropagation();
+                const action = target.closest('.menu-item').dataset.action;
+                if (action) {
+                    handleFileAction(action, key);
+                    target.closest('.menu-items').classList.remove('show');
+                    G.currentMenu = null;
+                }
             }
             return;
         }
 
-        if (getFileIcon(key) === 'image') {
+        const isFolder = key.endsWith('/') || key === '..';
+        const fileIconType = getFileIcon(key);
+
+        if (isFolder) {
+            G.currentPath = (key === '..') ? fileItem.dataset.path : key;
+            G.isAllSelected = false; // 进入新目录，取消全选状态
+            G.selectAllButton.textContent = '全选';
+            renderFiles();
+        } else if (fileIconType === 'image') {
             const imageIndex = G.imageFiles.findIndex(f => f.key === key);
             if (imageIndex > -1) openLightbox(imageIndex);
+        } else if (fileIconType === '#icon-video') {
+            G.videoElement.src = \`/\${encodeURIComponent(key)}\`;
+            G.videoPlayer.classList.remove('hidden');
+            G.videoElement.play().catch(err => console.error("Video play failed:", err));
         }
     });
     
