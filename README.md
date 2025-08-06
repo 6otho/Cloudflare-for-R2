@@ -1,7 +1,6 @@
 # ☁️ Cloudflare-R2 文件管理器
 
-<!-- <img width="1918" height="915" alt="image" src="https://github.com/user-attachments/assets/cb01a85b-4484-4ed4-b8dc-3bdea70aacae" />
- -->
+<!--https://worker-r2-oss.oo6oth.workers.dev/image_2025-08-07_03-52-24.png-->
 
 这是一个超级轻量、功能强大且界面精美的 Cloudflare R2 文件管理器！🚀 只需一个 Worker 文件，你就能拥有一个属于自己的、完全免费的私人网盘。
 
