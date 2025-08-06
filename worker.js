@@ -131,7 +131,7 @@ export default {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloudflare-R2图床</title>
+  <title>Cloudflare-R2</title>
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
@@ -250,7 +250,7 @@ export default {
     <symbol id="icon-doc" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-4H8V8h5v2zM6 20V4h7v5h5v11H6z"/></symbol>
   </defs></svg>
 
-  <div id="login-view"><div class="login-box"><h1>Cloudflare-R2图床</h1><input type="password" id="password-input" placeholder="请输入访问密码"><button id="login-button">进入</button><p id="login-error"></p></div></div>
+  <div id="login-view"><div class="login-box"><h1>Cloudflare-R2</h1><input type="password" id="password-input" placeholder="请输入访问密码"><button id="login-button">进入</button><p id="login-error"></p></div></div>
 
   <div id="app-view" class="hidden">
     <header><h1>文件列表</h1><div class="actions"><button id="create-folder-button">新建文件夹</button><button id="view-toggle-button" title="切换视图"></button><button id="select-all-button">全选</button><button id="delete-button">删除选中</button></div></header>
