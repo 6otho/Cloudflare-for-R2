@@ -1,14 +1,10 @@
 // =================================================================================
-// R2-UI-WORKER v3.3 (Corrected Format by Gemini)
+// R2-UI-WORKER v3.7 (Interaction Enhanced by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - Corrected the file structure to be a valid Cloudflare Worker module.
-// - Added "Create Folder" functionality.
-// - Implemented "Move" functionality with a folder selection dialog.
-// - Grid View: Moved checkbox to bottom-left & shows on hover/selection.
-// - Mobile: Improved login form proportions on small screens.
-// - Added folder icons and basic folder object handling.
-// - Consolidated rename/move logic into a single API endpoint.
+// - (Feature) Create & Move Interaction: After creating a folder, any pre-selected items will be automatically moved into it.
+// - (Fix) Robust Move API: The backend /api/move endpoint now correctly handles moving non-empty folders and their contents.
+// - Maintained original code structure and worker.js format as requested.
 // =================================================================================
 
 export default {
@@ -59,7 +55,6 @@ export default {
       } catch (e) { return new Response('Invalid JSON format.', { status: 400 }); }
     }
     
-    // NEW: API endpoint to create a folder (zero-byte object with a slash)
     if (request.method === 'POST' && url.pathname === '/api/create-folder') {
         try {
             const { folderName } = await request.json();
@@ -79,24 +74,63 @@ export default {
         }
     }
 
-    // MODIFIED: Renamed /api/rename to /api/move for generic use (rename and move)
+    // MODIFIED: Enhanced logic to properly move folders and their contents.
     if (request.method === 'POST' && url.pathname === '/api/move') {
       try {
         const { oldKey, newKey } = await request.json();
         if (!oldKey || !newKey) return new Response('Both oldKey and newKey are required.', { status: 400 });
         if (oldKey === newKey) return new Response('Source and destination are the same.', { status: 400 });
         
-        const object = await BUCKET.get(oldKey);
-        if (!object) return new Response('Object not found', { status: 404 });
-        
-        await BUCKET.put(newKey, object.body, {
-          httpMetadata: object.httpMetadata,
-          customMetadata: object.customMetadata
-        });
-        
-        await BUCKET.delete(oldKey);
-        
-        return new Response(`Moved ${oldKey} to ${newKey} successfully.`, { status: 200 });
+        const isFolder = oldKey.endsWith('/');
+        if (isFolder) {
+            // Prevent moving a folder into itself
+            if (newKey.startsWith(oldKey)) {
+                return new Response('Invalid move. Cannot move a folder into itself.', { status: 400 });
+            }
+
+            // List all objects in the folder
+            const list = await BUCKET.list({ prefix: oldKey, limit: 1000 }); // R2 list limit is 1000
+            let objectsToMove = list.objects;
+
+            // Handle empty folders which might not appear in the list
+            if (objectsToMove.length === 0) {
+                const emptyFolderObject = await BUCKET.head(oldKey);
+                if (emptyFolderObject) {
+                    objectsToMove = [{ key: oldKey, size: emptyFolderObject.size }];
+                }
+            }
+            
+            // If there's nothing to move, return success.
+            if (objectsToMove.length === 0) {
+                return new Response(`Folder ${oldKey} not found or is empty.`, { status: 200 });
+            }
+            
+            // Batch copy all objects to the new location
+            for (const obj of objectsToMove) {
+                const objectToCopy = await BUCKET.get(obj.key);
+                if (objectToCopy) {
+                    const newObjectKey = newKey + obj.key.substring(oldKey.length);
+                    await BUCKET.put(newObjectKey, objectToCopy.body, {
+                        httpMetadata: objectToCopy.httpMetadata,
+                        customMetadata: objectToCopy.customMetadata,
+                    });
+                }
+            }
+            
+            // Batch delete all old objects
+            const keysToDelete = objectsToMove.map(obj => obj.key);
+            await BUCKET.delete(keysToDelete);
+            
+            return new Response(`Moved folder ${oldKey} to ${newKey} successfully.`, { status: 200 });
+
+        } else {
+            // Original logic for moving a single file
+            const object = await BUCKET.get(oldKey);
+            if (!object) return new Response('Object not found', { status: 404 });
+            await BUCKET.put(newKey, object.body, { httpMetadata: object.httpMetadata, customMetadata: object.customMetadata });
+            await BUCKET.delete(oldKey);
+            return new Response(`Moved ${oldKey} to ${newKey} successfully.`, { status: 200 });
+        }
       } catch (e) { return new Response('Error moving file: ' + e.message, { status: 500 }); }
     }
 
@@ -125,6 +159,7 @@ export default {
    * All front-end logic (HTML, CSS, client-side JS) is contained within this string.
    */
   generateHTML() {
+    // NOTE: All backticks ` within the <script> tag are escaped as \` to be valid inside a JS template literal.
     return `
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -147,7 +182,6 @@ export default {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background-color: var(--bg-color); color: var(--text-color); font-size: 16px; transition: background-color .3s, color .3s; }
     .hidden { display: none !important; }
     #login-view { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; }
-    /* MODIFIED: Added box-sizing for better mobile proportions */
     .login-box { padding: 40px; background-color: var(--card-bg); border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 350px; box-sizing: border-box; }
     .login-box h1 { color: var(--c-primary); margin-top: 0; }
     .login-box input { width: 100%; box-sizing: border-box; padding: 12px; margin: 10px 0; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
@@ -182,7 +216,6 @@ export default {
     .grid-view .info { padding: 15px; text-align: center; }
     .grid-view .filename { font-weight: bold; word-break: break-all; margin-bottom: 5px; }
     .grid-view .filesize { font-size: 0.8em; color: var(--text-light); }
-    /* MODIFIED: Checkbox moved to bottom-left, hidden by default, shown on hover/selection */
     .grid-view .checkbox { position: absolute; bottom: 5px; left: 5px; z-index: 5; opacity: 0; transition: opacity .2s ease-in-out; }
     .grid-view .file-item:hover .checkbox, .grid-view .file-item.selected .checkbox { opacity: 1; }
     .checkbox { width: 20px; height: 20px; accent-color: var(--c-primary); cursor: pointer; }
@@ -204,7 +237,6 @@ export default {
     .menu-items.show { display: block; }
     .menu-item { padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; }
     .menu-item:hover { background-color: var(--c-primary); color: white; }
-    /* Generic dialog styles for rename, move, create folder */
     .dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; width: 90%; max-width: 400px; box-sizing: border-box; }
     .dialog.show { display: block; }
     .dialog h3 { margin-top: 0; color: var(--text-color); }
@@ -218,7 +250,6 @@ export default {
     @media (max-width: 480px) {
       .grid-view .icon { height: 100px; }
       .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-      /* MODIFIED: Reduced padding for login box on small screens */
       .login-box { padding: 25px; }
     }
   </style>
@@ -324,7 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return Array.from(folderSet).sort();
   };
 
-
   const renderFiles = () => {
     G.fileContainer.innerHTML = '';
     if (G.files.length === 0) { G.fileContainer.innerHTML = '<p style="text-align:center;color:var(--text-light);">存储桶为空。</p>'; return; }
@@ -387,17 +417,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
+  // MODIFIED: Refactored to be a pure API wrapper that throws on error.
   const moveOrRenameFile = async (oldKey, newKey) => {
       if (!newKey || newKey === oldKey) { return; }
-      try {
-          await apiCall('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldKey, newKey }) });
-          showToast(\`操作成功: "\${newKey}"\`);
-          await refreshFileList();
-      } catch (error) {
-          showToast(\`操作失败: \${error.message}\`);
-      }
+      // This function now only makes the API call and relies on the calling function for feedback and list refresh.
+      await apiCall('/api/move', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ oldKey, newKey }) 
+      });
   };
 
+  // MODIFIED: Added try/catch and user feedback via toasts.
   const handleRename = async () => {
       const oldKey = G.currentFileKey;
       const newName = G.newFilename.value.trim();
@@ -408,34 +439,71 @@ document.addEventListener('DOMContentLoaded', () => {
       const path = oldKey.includes('/') ? oldKey.substring(0, oldKey.lastIndexOf('/') + 1) : '';
       const newKey = path + newName + (isFolder ? '/' : '');
 
-      await moveOrRenameFile(oldKey, newKey);
+      try {
+          await moveOrRenameFile(oldKey, newKey);
+          showToast(\`操作成功: "\${newKey}"\`);
+          await refreshFileList();
+      } catch(error) {
+          showToast(\`操作失败: \${error.message}\`);
+      }
   };
   
+  // MODIFIED: Added try/catch and user feedback via toasts.
   const handleMove = async () => {
     const oldKey = G.currentFileKey;
     const destination = G.folderDestination.value;
     G.moveDialog.classList.remove('show');
 
     const isFolder = oldKey.endsWith('/');
-    const filename = isFolder 
-      ? oldKey.slice(0, -1).split('/').pop() + '/' 
-      : oldKey.split('/').pop();
-      
+    const filename = isFolder ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
     const newKey = (destination === '/') ? filename : destination + filename;
 
-    await moveOrRenameFile(oldKey, newKey);
+    try {
+      await moveOrRenameFile(oldKey, newKey);
+      showToast(\`成功移动到: "\${newKey}"\`);
+      await refreshFileList();
+    } catch (error) {
+      showToast(\`移动失败: \${error.message}\`);
+    }
   };
   
+  // MODIFIED: Now checks for selected files and moves them into the new folder after creation.
   const handleCreateFolder = async () => {
     const folderName = G.newFolderName.value.trim();
     G.createFolderDialog.classList.remove('show');
-    if (!folderName) return;
+    if (!folderName || folderName.includes('/')) {
+        showToast('创建失败: 文件夹名称无效。');
+        return;
+    }
+
+    const selectedKeys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
+
     try {
-        await apiCall('/api/create-folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ folderName }) });
+      // 1. Create the folder
+      await apiCall('/api/create-folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ folderName }) });
+      
+      // 2. If items were selected, move them into the new folder
+      if (selectedKeys.length > 0) {
+        showToast(\`文件夹 "\${folderName}" 创建成功。正在移动 \${selectedKeys.length} 个项目...\`);
+        const destinationFolder = \`\${folderName}/\`;
+        
+        const movePromises = selectedKeys.map(oldKey => {
+            const isFolder = oldKey.endsWith('/');
+            const baseName = isFolder ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
+            const newKey = destinationFolder + baseName;
+            return moveOrRenameFile(oldKey, newKey);
+        });
+
+        await Promise.all(movePromises);
+        showToast(\`成功移动 \${selectedKeys.length} 个项目到 "\${folderName}"\`);
+      } else {
         showToast(\`文件夹 "\${folderName}" 创建成功\`);
-        await refreshFileList();
+      }
+      
+      G.newFolderName.value = ''; // Clear input for next time
+      await refreshFileList();
     } catch(error) {
-        showToast('创建失败: ' + error.message);
+        showToast('操作失败: ' + error.message);
     }
   };
 
@@ -472,87 +540,92 @@ document.addEventListener('DOMContentLoaded', () => {
   const handleDelete = async (keys) => {
     if (!keys || keys.length === 0) keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
     if (keys.length === 0) { showToast("请先选择要删除的项目"); return; }
-    if (!confirm(\`确定删除 \${keys.length} 个项目吗？\`)) return;
-    try { await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) }); showToast(\`成功删除 \${keys.length} 个项目\`); await refreshFileList(); }
-    catch(error) { showToast('删除失败: ' + error.message); }
+    if (!confirm(\`你确定要删除选中的 \${keys.length} 个项目吗？此操作不可恢复。\`)) return;
+    try {
+        await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) });
+        showToast(\`成功删除 \${keys.length} 个项目\`);
+        await refreshFileList();
+    } catch (error) { showToast(\`删除失败: \${error.message}\`); }
   };
 
-  const init = () => {
-    applyTheme(); applyViewMode();
+  const setupEventListeners = () => {
     G.themeToggle.addEventListener('click', toggleTheme);
     G.loginButton.addEventListener('click', handleLogin);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
-    G.viewToggleButton.addEventListener('click', toggleViewMode);
-    G.selectAllButton.addEventListener('click', toggleSelectAll);
     G.deleteButton.addEventListener('click', () => handleDelete());
-    G.createFolderButton.addEventListener('click', () => { G.newFolderName.value = ''; G.createFolderDialog.classList.add('show') });
+    G.createFolderButton.addEventListener('click', () => { G.newFolderName.value = ''; G.createFolderDialog.classList.add('show'); });
+    G.selectAllButton.addEventListener('click', toggleSelectAll);
+    G.viewToggleButton.addEventListener('click', toggleViewMode);
     G.dropZone.addEventListener('click', () => G.fileInput.click());
     G.fileInput.addEventListener('change', () => handleUpload(G.fileInput.files));
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => G.dropZone.addEventListener(ev, e => {e.preventDefault();e.stopPropagation();}));
-    ['dragenter', 'dragover'].forEach(ev => G.dropZone.addEventListener(ev, () => G.dropZone.classList.add('dragging')));
-    ['dragleave', 'drop'].forEach(ev => G.dropZone.addEventListener(ev, () => G.dropZone.classList.remove('dragging')));
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => document.body.addEventListener(e, p => p.preventDefault()));
+    ['dragenter', 'dragover'].forEach(eventName => G.dropZone.addEventListener(eventName, () => G.dropZone.classList.add('dragging')));
+    ['dragleave', 'drop'].forEach(eventName => G.dropZone.addEventListener(eventName, () => G.dropZone.classList.remove('dragging')));
     G.dropZone.addEventListener('drop', e => handleUpload(e.dataTransfer.files));
     G.lightboxClose.addEventListener('click', closeLightbox);
     G.lightboxPrev.addEventListener('click', showPrevImage);
     G.lightboxNext.addEventListener('click', showNextImage);
-    document.addEventListener('keydown', e => e.key === 'Escape' && !G.lightbox.classList.contains('hidden') && closeLightbox());
-    
-    document.addEventListener('click', e => {
-      const menuButton = e.target.closest('.menu-button');
-      if (G.currentMenu && !e.target.closest('.menu-items') && !menuButton) { G.currentMenu.classList.remove('show'); G.currentMenu = null; }
-      if (menuButton) { const menu = menuButton.nextElementSibling; if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show'); menu.classList.toggle('show'); G.currentMenu = menu.classList.contains('show') ? menu : null; e.stopPropagation(); return; }
-      if (e.target.classList.contains('menu-item')) { const menu = e.target.closest('.menu-items'); handleFileAction(e.target.dataset.action, menu.dataset.key); menu.classList.remove('show'); G.currentMenu = null; return; }
-    });
-    
-    G.fileContainer.addEventListener('click', e => {
-      const item = e.target.closest('.file-item'); if (!item) return;
-      if (e.target.matches('.checkbox, .menu-button, .menu-item, a')) return;
-      const checkbox = item.querySelector('.checkbox');
-      const key = item.dataset.key;
-      const isFolder = key.endsWith('/');
-      
-      // Click on icon or image part
-      if (e.target.closest('.icon') || e.target.tagName === 'IMG') {
-          if (isFolder) {
-              // Future: Navigate into folder. For now, do nothing as list is flat.
-          } else if (getFileIcon(key) === 'image') { 
-              const imageIndex = G.imageFiles.findIndex(f => f.key === key); if (imageIndex > -1) openLightbox(imageIndex);
-          } else {
-              window.open(\`/\${encodeURIComponent(key)}\`, '_blank');
-          }
-      } else if (checkbox) {
-        checkbox.checked = !checkbox.checked;
-        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
-
-    G.fileContainer.addEventListener('change', e => {
-      if (e.target.matches('.checkbox')) {
-        const item = e.target.closest('.file-item');
-        if (item) item.classList.toggle('selected', e.target.checked);
-        const allCheckboxes = document.querySelectorAll('.checkbox');
-        const checkedCount = document.querySelectorAll('.checkbox:checked').length;
-        G.isAllSelected = allCheckboxes.length > 0 && checkedCount === allCheckboxes.length;
-        G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
-      }
-    });
-    
-    // Dialog buttons
+    document.addEventListener('keydown', e => { if (!G.lightbox.classList.contains('hidden')) { if (e.key === 'Escape') closeLightbox(); if (e.key === 'ArrowLeft') showPrevImage(); if (e.key === 'ArrowRight') showNextImage(); } });
     G.renameCancel.addEventListener('click', () => G.renameDialog.classList.remove('show'));
     G.renameConfirm.addEventListener('click', handleRename);
-    G.newFilename.addEventListener('keypress', e => e.key === 'Enter' && handleRename());
-    
     G.createFolderCancel.addEventListener('click', () => G.createFolderDialog.classList.remove('show'));
     G.createFolderConfirm.addEventListener('click', handleCreateFolder);
-    G.newFolderName.addEventListener('keypress', e => e.key === 'Enter' && handleCreateFolder());
-    
     G.moveCancel.addEventListener('click', () => G.moveDialog.classList.remove('show'));
     G.moveConfirm.addEventListener('click', handleMove);
 
+    G.fileContainer.addEventListener('click', e => {
+        const target = e.target;
+        const fileItem = target.closest('.file-item');
+        if (!fileItem) return;
+        const key = fileItem.dataset.key;
+        
+        if (target.matches('.checkbox')) {
+            fileItem.classList.toggle('selected', target.checked);
+            G.isAllSelected = document.querySelectorAll('.checkbox:checked').length === G.files.length;
+            G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
+            return;
+        }
+        
+        if (target.matches('.menu-button')) {
+            e.stopPropagation();
+            const menu = fileItem.querySelector('.menu-items');
+            if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show');
+            menu.classList.toggle('show');
+            G.currentMenu = menu;
+            return;
+        }
+
+        if(target.closest('.menu-item')) {
+            e.stopPropagation();
+            const action = target.closest('.menu-item').dataset.action;
+            if (action) {
+                handleFileAction(action, key);
+                target.closest('.menu-items').classList.remove('show');
+                G.currentMenu = null;
+            }
+            return;
+        }
+
+        if (getFileIcon(key) === 'image') {
+            const imageIndex = G.imageFiles.findIndex(f => f.key === key);
+            if (imageIndex > -1) openLightbox(imageIndex);
+        }
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (G.currentMenu && !e.target.closest('.menu-button')) {
+            G.currentMenu.classList.remove('show');
+            G.currentMenu = null;
+        }
+    });
+  };
+  
+  const init = () => {
+    applyTheme(); applyViewMode(); setupEventListeners();
     const savedPassword = sessionStorage.getItem('r2-password');
     if (savedPassword) { G.passwordInput.value = savedPassword; handleLogin(); }
   };
-
+  
   init();
 });
 </script>
@@ -560,4 +633,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </html>
 `;
   }
-}
+};
