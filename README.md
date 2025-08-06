@@ -1,7 +1,6 @@
 # ☁️ Cloudflare-R2 文件管理器
 
-<!--https://worker-r2-oss.oo6oth.workers.dev/image_2025-08-07_03-52-24.png-->
-https://worker-r2-oss.oo6oth.workers.dev/image_2025-08-07_03-51-24.png
+![Cloudflare-R2 文件管理器预览](https://worker-r2-oss.oo6oth.workers.dev/image_2025-08-07_03-51-24.png)
 
 这是一个超级轻量、功能强大且界面精美的 Cloudflare R2 文件管理器！🚀 只需一个 Worker 文件，你就能拥有一个属于自己的、完全免费的私人网盘。
 
@@ -21,7 +20,7 @@ https://worker-r2-oss.oo6oth.workers.dev/image_2025-08-07_03-51-24.png
 内置精致的亮色与暗色主题，并能根据你的系统设置自动切换。
 
 🖼️ **强大的媒体支持**
-- **图片预览**：网格模式下直接显示图片缩gel thumbnail。
+- **图片预览**：网格模式下直接显示图片缩略图。
 - **图片灯箱**：点击图片可进入沉浸式灯箱，支持键盘左右切换。
 - **视频缩略图**：自动为视频文件生成封面缩略图，浏览更直观！
 - **在线视频播放**：直接在浏览器中播放 R2 存储的视频文件。
