@@ -50,6 +50,26 @@ export default {
       } catch (e) { return new Response('Invalid JSON format.', { status: 400 }); }
     }
 
+    // 新增重命名API
+    if (request.method === 'POST' && url.pathname === '/api/rename') {
+      try {
+        const { oldKey, newKey } = await request.json();
+        if (!oldKey || !newKey) return new Response('Both oldKey and newKey are required.', { status: 400 });
+        
+        const object = await BUCKET.get(oldKey);
+        if (!object) return new Response('Object not found', { status: 404 });
+        
+        await BUCKET.put(newKey, object.body, {
+          httpMetadata: object.httpMetadata,
+          customMetadata: object.customMetadata
+        });
+        
+        await BUCKET.delete(oldKey);
+        
+        return new Response(`Renamed ${oldKey} to ${newKey} successfully.`, { status: 200 });
+      } catch (e) { return new Response('Error renaming file', { status: 500 }); }
+    }
+
     return new Response('API endpoint not found.', { status: 404 });
   },
 
@@ -71,7 +91,7 @@ export default {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>R2 文件管理器</title>
+  <title>Cloudflare-R2圖床</title>
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
@@ -100,40 +120,215 @@ export default {
     .actions button:hover { border-color: var(--c-primary); color: var(--c-primary); }
     .actions button.active { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
     #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
+    #select-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
     .uploader { border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 20px; }
     .uploader.dragging { background-color: var(--c-primary); color: #fff; }
     .file-container.list-view { display: block; }
-    .file-container.list-view .file-item { display: flex; align-items: center; padding: 10px; background-color: var(--card-bg); border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .list-view .icon { flex-shrink: 0; width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; }
-    .list-view .icon svg, .grid-view .icon svg { width: 32px; height: 32px; color: var(--c-primary); }
-    .list-view .info { flex-grow: 1; margin: 0 15px; }
+    .file-container.list-view .file-item { display: flex; align-items: center; padding: 10px; background-color: var(--card-bg); border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
+    /* 列表视图图标缩小到16px */
+    .list-view .icon { flex-shrink: 0; width: 20px; height: 20px; display:flex; align-items:center; justify-content:center; margin: 0 10px; }
+    .list-view .icon svg, .grid-view .icon svg { width: 16px; height: 16px; color: var(--c-primary); }
+    .list-view .info { flex-grow: 1; margin: 0 10px; }
     .list-view .filename { font-weight: bold; }
     .list-view .filesize { font-size: 0.9em; color: var(--text-light); }
-    .list-view .checkbox { margin-left: auto; }
+    /* 选择框向前移动 */
+    .list-view .checkbox { margin-left: 0; margin-right: 10px; }
     .file-container.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
     .grid-view .file-item { position: relative; background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s; }
     .grid-view .file-item:hover { transform: translateY(-5px); }
-    .grid-view .icon { height: 120px; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.1); }
+    .grid-view .icon { height: 80px; display: flex; justify-content: center; align-items: center; background-color: rgba(0,0,0,0.1); }
     .grid-view .icon img { width: 100%; height: 100%; object-fit: cover; }
     .grid-view .info { padding: 15px; text-align: center; }
     .grid-view .filename { font-weight: bold; word-break: break-all; margin-bottom: 5px; }
     .grid-view .filesize { font-size: 0.8em; color: var(--text-light); }
-    .grid-view .checkbox { position: absolute; top: 10px; right: 10px; }
+    /* 网格视图选择框位置调整 */
+    .grid-view .checkbox { position: absolute; top: 5px; left: 5px; }
     .checkbox { width: 20px; height: 20px; accent-color: var(--c-primary); cursor: pointer; }
     #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     #lightbox img { max-width: 90%; max-height: 90%; object-fit: contain; }
     .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: #fff; border: none; font-size: 2em; padding: 10px 15px; cursor: pointer; border-radius: 8px; }
     #lightbox-prev { left: 20px; } #lightbox-next { right: 20px; } #lightbox-close { top: 20px; right: 20px; transform: none; font-size: 1.5em; }
+    
+    /* 主题切换按钮样式 */
+    .theme-toggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 8px 12px;
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      cursor: pointer;
+      z-index: 1000;
+      font-size: 16px;
+    }
+    .theme-toggle:hover {
+      background-color: var(--c-primary);
+      color: #fff;
+    }
+    
+    /* 文件操作菜单 - 列表视图调整 */
+    .list-view .file-actions {
+      position: static;
+      margin-left: auto;
+    }
+    .list-view .menu-button {
+      width: 20px;
+      height: 20px;
+      font-size: 14px;
+    }
+    .list-view .menu-items {
+      bottom: auto;
+      top: 30px;
+      right: 0;
+    }
+    
+    /* 文件操作菜单 - 网格视图调整 */
+    .grid-view .file-actions {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      z-index: 10;
+    }
+    .menu-button {
+      width: 20px;
+      height: 20px;
+      background-color: var(--card-bg);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.3s;
+    }
+    .menu-button:hover {
+      opacity: 1;
+      background-color: var(--c-primary);
+      color: white;
+    }
+    .menu-button::after {
+      content: "⋮";
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .menu-items {
+      position: absolute;
+      bottom: 30px;
+      right: 0;
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 20;
+      width: 120px;
+      overflow: hidden;
+      display: none;
+    }
+    .menu-items.show {
+      display: block;
+    }
+    .menu-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    .menu-item:hover {
+      background-color: var(--c-primary);
+      color: white;
+    }
+    
+    /* 重命名对话框 */
+    .rename-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: var(--card-bg);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      z-index: 2000;
+      display: none;
+      width: 90%;
+      max-width: 400px;
+    }
+    .rename-dialog.show {
+      display: block;
+    }
+    .rename-dialog input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+    }
+    .rename-dialog-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    
     @media (max-width: 768px) {
       header { flex-direction: column; align-items: flex-start; gap: 20px; }
       header h1 { font-size: 1.5em; }
       .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
       .list-view .info { margin: 0 10px; }
       .lightbox-nav { font-size: 1.5em; padding: 8px 12px; }
+      .actions { flex-wrap: wrap; }
+      .actions button { padding: 8px 10px; font-size: 0.9em; }
+      .list-view .icon { 
+        width: 18px; 
+        height: 18px; 
+        margin: 0 8px;
+      }
+      .list-view .icon svg, .grid-view .icon svg { 
+        width: 14px; 
+        height: 14px; 
+      }
+    }
+    @media (max-width: 480px) {
+      .grid-view .icon { height: 60px; }
+      .list-view .icon { width: 16px; height: 16px; }
+      .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+      .theme-toggle {
+        top: 5px;
+        right: 5px;
+        padding: 6px 10px;
+        font-size: 14px;
+      }
+      .menu-items {
+        width: 100px;
+      }
+      .menu-item {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      .list-view .checkbox { 
+        margin-right: 5px;
+      }
     }
   </style>
 </head>
 <body>
+
+  <!-- 全局主题切换按钮 -->
+  <button class="theme-toggle" id="global-theme-toggle">
+    <span class="sun">☀️</span>
+    <span class="moon hidden">🌙</span>
+  </button>
+
+  <!-- 重命名对话框 -->
+  <div class="rename-dialog" id="rename-dialog">
+    <h3>重命名文件</h3>
+    <input type="text" id="new-filename" placeholder="新文件名">
+    <div class="rename-dialog-buttons">
+      <button id="rename-cancel">取消</button>
+      <button id="rename-confirm">确认</button>
+    </div>
+  </div>
 
   <svg class="hidden"><defs>
     <symbol id="icon-file" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></symbol>
@@ -141,20 +336,16 @@ export default {
     <symbol id="icon-audio" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-2 15a3 3 0 1 1 0-6a3 3 0 0 1 0 6zm0-8a1 1 0 0 0-1 1v2.55A3 3 0 0 0 9 14a3 3 0 0 0 6 0a3 3 0 0 0-2-2.82V9a1 1 0 0 0-1-1h-2zM6 20V4h7v5h5v11H6z"/></symbol>
     <symbol id="icon-zip" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM9 18H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V8h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zM6 20V4h7v5h5v11H6z"/></symbol>
     <symbol id="icon-doc" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-4H8V8h5v2zM6 20V4h7v5h5v11H6z"/></symbol>
-    <symbol id="icon-theme-light" viewBox="0 0 24 24"><path fill="currentColor" d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5s5-2.24 5-5s-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.02-.39-1.41 0c-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0s.39-1.02 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.02-.39-1.41 0c-.39.39-.39 1.02 0 1.41l1.06 1.06c.39.39 1.02.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.02 0-1.41a.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41c.39.39 1.02.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.02 0-1.41a.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.02 0 1.41c.39.39 1.02.39 1.41 0l1.06-1.06z"/></symbol>
-    <symbol id="icon-theme-dark" viewBox="0 0 24 24"><path fill="currentColor" d="M9.37 5.51A7.35 7.35 0 0 0 9 6c0 4.41 3.59 8 8 8c.36 0 .72-.03 1.07-.09a7.33 7.33 0 0 1-3.07 2.91A7.06 7.06 0 0 1 9.5 19c-3.86 0-7-3.14-7-7c0-2.93 1.81-5.45 4.37-6.49z"/></symbol>
-    <symbol id="icon-list-view" viewBox="0 0 24 24"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></symbol>
-    <symbol id="icon-grid-view" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/></symbol>
   </defs></svg>
 
-  <div id="login-view"><div class="login-box"><h1>R2 文件管理器</h1><input type="password" id="password-input" placeholder="请输入访问密码"><button id="login-button">进入</button><p id="login-error"></p></div></div>
+  <div id="login-view"><div class="login-box"><h1>Cloudflare-R2圖床</h1><input type="password" id="password-input" placeholder="请输入访问密码"><button id="login-button">进入</button><p id="login-error"></p></div></div>
 
   <div id="app-view" class="hidden">
     <header>
       <h1>文件列表</h1>
       <div class="actions">
-        <button id="theme-toggle-button" title="切换主题"></button>
         <button id="view-toggle-button" title="切换视图"></button>
+        <button id="select-all-button">全选</button>
         <button id="delete-button">删除选中</button>
       </div>
     </header>
@@ -180,8 +371,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Buttons
     loginButton: document.getElementById('login-button'),
     deleteButton: document.getElementById('delete-button'),
-    themeToggleButton: document.getElementById('theme-toggle-button'),
     viewToggleButton: document.getElementById('view-toggle-button'),
+    selectAllButton: document.getElementById('select-all-button'),
     // Inputs
     passwordInput: document.getElementById('password-input'),
     fileInput: document.getElementById('file-input'),
@@ -192,6 +383,13 @@ document.addEventListener('DOMContentLoaded', () => {
     lightboxClose: document.getElementById('lightbox-close'),
     lightboxPrev: document.getElementById('lightbox-prev'),
     lightboxNext: document.getElementById('lightbox-next'),
+    // Theme toggle
+    themeToggle: document.getElementById('global-theme-toggle'),
+    // Rename dialog
+    renameDialog: document.getElementById('rename-dialog'),
+    newFilename: document.getElementById('new-filename'),
+    renameCancel: document.getElementById('rename-cancel'),
+    renameConfirm: document.getElementById('rename-confirm'),
     // State
     password: '',
     files: [],
@@ -199,10 +397,30 @@ document.addEventListener('DOMContentLoaded', () => {
     currentImageIndex: -1,
     theme: localStorage.getItem('theme') || 'dark',
     viewMode: localStorage.getItem('viewMode') || 'grid',
+    isAllSelected: false,
+    currentFileKey: null, // 当前操作的文件key
+    currentMenu: null, // 当前打开的文件菜单
   };
 
   // --- UTILS ---
-  const showToast = (message) => { /* Omitting for brevity, assumed to exist */ };
+  const showToast = (message, duration = 3000) => {
+    // 创建或获取toast元素
+    let toast = document.getElementById('toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'toast';
+      toast.className = 'toast';
+      document.body.appendChild(toast);
+    }
+    
+    toast.textContent = message;
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, duration);
+  };
+  
   const getFileIcon = (filename) => {
     const ext = filename.split('.').pop().toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
@@ -212,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md'].includes(ext)) return '#icon-doc';
     return '#icon-file';
   };
+  
   const formatBytes = (bytes, d=2) => {
     if(!+bytes)return"0 Bytes";const i=Math.floor(Math.log(bytes)/Math.log(1024));
     return \`\${parseFloat((bytes/Math.pow(1024,i)).toFixed(d))} \${"Bytes,KB,MB,GB,TB"[i]}\`
@@ -228,18 +447,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- THEME & VIEW ---
   const applyTheme = () => {
     document.documentElement.setAttribute('data-theme', G.theme);
-    G.themeToggleButton.innerHTML = G.theme === 'dark' ? '<svg><use xlink:href="#icon-theme-light"></use></svg>' : '<svg><use xlink:href="#icon-theme-dark"></use></svg>';
+    // 更新主题切换按钮图标
+    const sun = G.themeToggle.querySelector('.sun');
+    const moon = G.themeToggle.querySelector('.moon');
+    if (G.theme === 'dark') {
+      sun.classList.add('hidden');
+      moon.classList.remove('hidden');
+    } else {
+      sun.classList.remove('hidden');
+      moon.classList.add('hidden');
+    }
   };
+  
   const toggleTheme = () => {
     G.theme = G.theme === 'dark' ? 'light' : 'dark';
     localStorage.setItem('theme', G.theme);
     applyTheme();
   };
+  
   const applyViewMode = () => {
     G.fileContainer.className = \`file-container \${G.viewMode}-view\`;
     G.viewToggleButton.innerHTML = G.viewMode === 'grid' ? '<svg><use xlink:href="#icon-list-view"></use></svg>' : '<svg><use xlink:href="#icon-grid-view"></use></svg>';
     renderFiles();
   };
+  
   const toggleViewMode = () => {
     G.viewMode = G.viewMode === 'grid' ? 'list' : 'grid';
     localStorage.setItem('viewMode', G.viewMode);
@@ -253,10 +484,12 @@ document.addEventListener('DOMContentLoaded', () => {
     G.lightbox.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   };
+  
   const closeLightbox = () => {
     G.lightbox.classList.add('hidden');
     document.body.style.overflow = 'auto';
   };
+  
   const showNextImage = () => openLightbox((G.currentImageIndex + 1) % G.imageFiles.length);
   const showPrevImage = () => openLightbox((G.currentImageIndex - 1 + G.imageFiles.length) % G.imageFiles.length);
 
@@ -277,7 +510,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const iconHTML = isImage && G.viewMode === 'grid'
         ? \`<img src="/\${encodeURIComponent(file.key)}" alt="\${file.key}" loading="lazy">\`
         : \`<svg><use xlink:href="\${isImage ? '#icon-file' : fileType}"></use></svg>\`;
-        // In grid view, image icon is replaced by preview, so use generic file icon if it's an image.
+        
+      // 添加操作按钮和菜单
+      const actionsHTML = \`
+        <div class="file-actions">
+          <div class="menu-button" data-key="\${file.key}"></div>
+          <div class="menu-items" data-key="\${file.key}">
+            <div class="menu-item" data-action="rename">重命名</div>
+            <div class="menu-item" data-action="download">下载</div>
+            <div class="menu-item" data-action="copy">复制</div>
+            <div class="menu-item" data-action="move">移动</div>
+            <div class="menu-item" data-action="copy-link">复制链接</div>
+            <div class="menu-item" data-action="delete">删除</div>
+          </div>
+        </div>
+      \`;
+      
       if(isImage && G.viewMode === 'grid'){
          item.innerHTML = \`
           <div class="icon">\${iconHTML}</div>
@@ -285,7 +533,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="filename" title="\${file.key}">\${file.key}</div>
             <div class="filesize">\${formatBytes(file.size)}</div>
           </div>
-          <input type="checkbox" class="checkbox" data-key="\${file.key}">
+          <input type="checkbox" class="checkbox" data-key="\${file.key}" \${G.isAllSelected ? 'checked' : ''}>
+          \${actionsHTML}
         \`;
       } else {
          item.innerHTML = \`
@@ -294,12 +543,89 @@ document.addEventListener('DOMContentLoaded', () => {
              <div class="filename">\${file.key}</div>
              <div class="filesize">\${formatBytes(file.size)}</div>
           </div>
-          <input type="checkbox" class="checkbox" data-key="\${file.key}">
+          <input type="checkbox" class="checkbox" data-key="\${file.key}" \${G.isAllSelected ? 'checked' : ''}>
+          \${actionsHTML}
         \`;
       }
 
       G.fileContainer.appendChild(item);
     });
+  };
+
+  // --- FILE ACTIONS ---
+  const handleFileAction = (action, key) => {
+    G.currentFileKey = key;
+    
+    switch(action) {
+      case 'rename':
+        G.newFilename.value = key;
+        G.renameDialog.classList.add('show');
+        break;
+      case 'download':
+        const downloadUrl = \`\${window.location.origin}/\${encodeURIComponent(key)}\`;
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = key;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        break;
+      case 'copy':
+        showToast('复制功能正在开发中');
+        break;
+      case 'move':
+        showToast('移动功能正在开发中');
+        break;
+      case 'copy-link':
+        const fileUrl = \`\${window.location.origin}/\${encodeURIComponent(key)}\`;
+        navigator.clipboard.writeText(fileUrl)
+          .then(() => showToast('链接已复制到剪贴板'))
+          .catch(err => showToast('复制失败: ' + err));
+        break;
+      case 'delete':
+        if (confirm(\`确定删除文件 "\${key}" 吗？\`)) {
+          handleDelete([key]);
+        }
+        break;
+    }
+  };
+  
+  const renameFile = async () => {
+    const oldKey = G.currentFileKey;
+    const newKey = G.newFilename.value;
+    
+    if (!newKey || newKey === oldKey) {
+      G.renameDialog.classList.remove('show');
+      return;
+    }
+    
+    try {
+      const response = await apiCall('/api/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldKey, newKey })
+      });
+      
+      if (response.ok) {
+        showToast(\`文件已重命名为 "\${newKey}"\`);
+        await refreshFileList();
+      } else {
+        showToast(\`重命名失败: \${await response.text()}\`);
+      }
+    } catch (error) {
+      showToast(\`重命名失败: \${error.message}\`);
+    }
+    
+    G.renameDialog.classList.remove('show');
+  };
+
+  // --- SELECT ALL ---
+  const toggleSelectAll = () => {
+    G.isAllSelected = !G.isAllSelected;
+    document.querySelectorAll('.checkbox').forEach(checkbox => {
+      checkbox.checked = G.isAllSelected;
+    });
+    G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
   };
 
   // --- LOGIC ---
@@ -308,6 +634,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await apiCall('/api/list');
       G.files = (await response.json()).sort((a,b) => new Date(b.uploaded) - new Date(a.uploaded));
       renderFiles();
+      // 刷新后重置全选状态
+      G.isAllSelected = false;
+      G.selectAllButton.textContent = '全选';
     } catch (error) { console.error(error); }
   };
   
@@ -338,47 +667,142 @@ document.addEventListener('DOMContentLoaded', () => {
     await refreshFileList();
   };
 
-  const handleDelete = async () => {
-    const keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
+  const handleDelete = async (keys) => {
+    if (!keys || keys.length === 0) {
+      keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
+    }
+    
     if (keys.length === 0 || !confirm(\`确定删除 \${keys.length} 个文件吗？\`)) return;
+    
     try {
         await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) });
         await refreshFileList();
-    } catch(error) { console.error('Delete failed', error); }
+    } catch(error) { 
+        console.error('Delete failed', error);
+        showToast('删除失败: ' + error.message);
+    }
   };
 
   // --- INIT ---
   const init = () => {
-    applyTheme(); applyViewMode();
+    applyTheme();
+    applyViewMode();
+    
+    // 绑定主题切换事件
+    G.themeToggle.addEventListener('click', toggleTheme);
+    
+    // 绑定登录相关事件
     G.loginButton.addEventListener('click', handleLogin);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
-    G.themeToggleButton.addEventListener('click', toggleTheme);
+    
+    // 绑定视图切换事件
     G.viewToggleButton.addEventListener('click', toggleViewMode);
-    G.deleteButton.addEventListener('click', handleDelete);
+    
+    // 绑定选择事件
+    G.selectAllButton.addEventListener('click', toggleSelectAll);
+    G.deleteButton.addEventListener('click', () => handleDelete());
+    
+    // 绑定上传事件
     G.dropZone.addEventListener('click', () => G.fileInput.click());
     G.fileInput.addEventListener('change', () => handleUpload(G.fileInput.files));
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => G.dropZone.addEventListener(ev, e => {e.preventDefault();e.stopPropagation();}));
     ['dragenter', 'dragover'].forEach(ev => G.dropZone.addEventListener(ev, () => G.dropZone.classList.add('dragging')));
     ['dragleave', 'drop'].forEach(ev => G.dropZone.addEventListener(ev, () => G.dropZone.classList.remove('dragging')));
     G.dropZone.addEventListener('drop', e => handleUpload(e.dataTransfer.files));
+    
+    // 绑定图片预览事件
     G.lightboxClose.addEventListener('click', closeLightbox);
     G.lightboxPrev.addEventListener('click', showPrevImage);
     G.lightboxNext.addEventListener('click', showNextImage);
     document.addEventListener('keydown', e => e.key === 'Escape' && !G.lightbox.classList.contains('hidden') && closeLightbox());
-    G.fileContainer.addEventListener('click', e => {
-        const item = e.target.closest('.file-item');
-        if (!item) return;
-        const key = item.dataset.key;
-        const isImage = getFileIcon(key) === 'image';
-        if (isImage) {
-            e.preventDefault();
-            const imageIndex = G.imageFiles.findIndex(f => f.key === key);
-            if (imageIndex > -1) openLightbox(imageIndex);
-        } else {
-            window.open(\`/\${encodeURIComponent(key)}\`, '_blank');
+    
+    // 绑定文件操作事件
+    document.addEventListener('click', e => {
+      // 关闭所有菜单
+      if (G.currentMenu && !e.target.closest('.menu-items') && !e.target.classList.contains('menu-button')) {
+        G.currentMenu.classList.remove('show');
+        G.currentMenu = null;
+      }
+      
+      // 处理菜单按钮点击
+      if (e.target.classList.contains('menu-button')) {
+        const menu = e.target.nextElementSibling;
+        
+        // 关闭其他菜单
+        if (G.currentMenu && G.currentMenu !== menu) {
+          G.currentMenu.classList.remove('show');
         }
+        
+        // 切换当前菜单
+        menu.classList.toggle('show');
+        G.currentMenu = menu.classList.contains('show') ? menu : null;
+        
+        e.stopPropagation();
+        return;
+      }
+      
+      // 处理菜单项点击
+      if (e.target.classList.contains('menu-item')) {
+        const menu = e.target.closest('.menu-items');
+        const key = menu.dataset.key;
+        const action = e.target.dataset.action;
+        
+        menu.classList.remove('show');
+        G.currentMenu = null;
+        
+        handleFileAction(action, key);
+        return;
+      }
+    });
+    
+    // 绑定文件选择功能
+    G.fileContainer.addEventListener('click', e => {
+      // 处理复选框点击
+      if (e.target.classList.contains('checkbox')) {
+        const anyUnchecked = Array.from(document.querySelectorAll('.checkbox')).some(cb => !cb.checked);
+        G.isAllSelected = !anyUnchecked;
+        G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
+        return;
+      }
+      
+      // 处理文件项点击
+      const item = e.target.closest('.file-item');
+      if (!item) return;
+      
+      const key = item.dataset.key;
+      const isImage = getFileIcon(key) === 'image';
+      
+      if (e.target.tagName === 'IMG' || e.target.classList.contains('icon')) {
+        if (isImage) {
+          const imageIndex = G.imageFiles.findIndex(f => f.key === key);
+          if (imageIndex > -1) openLightbox(imageIndex);
+        } else {
+          window.open(\`/\${encodeURIComponent(key)}\`, '_blank');
+        }
+      } else {
+        // 点击文件项时切换选择状态
+        const checkbox = item.querySelector('.checkbox');
+        if (checkbox && !e.target.classList.contains('menu-button')) {
+          checkbox.checked = !checkbox.checked;
+          const anyUnchecked = Array.from(document.querySelectorAll('.checkbox')).some(cb => !cb.checked);
+          G.isAllSelected = !anyUnchecked;
+          G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
+        }
+      }
     });
 
+    // 绑定重命名事件
+    G.renameCancel.addEventListener('click', () => {
+      G.renameDialog.classList.remove('show');
+    });
+    
+    G.renameConfirm.addEventListener('click', renameFile);
+    
+    G.newFilename.addEventListener('keypress', e => {
+      if (e.key === 'Enter') renameFile();
+    });
+
+    // 自动登录
     const savedPassword = sessionStorage.getItem('r2-password');
     if (savedPassword) { G.passwordInput.value = savedPassword; handleLogin(); }
   };
