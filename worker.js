@@ -1,8 +1,9 @@
 // =================================================================================
-// R2-UI-WORKER v5.9 (The Definitive Masterpiece by Gemini)
+// R2-UI-WORKER v6.1 (The Final Masterpiece by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (Critical Fix) Perfected iOS Home Screen Icon: Replaced the unreliable SVG data URI with a robust Base64 encoded PNG for the apple-touch-icon, ensuring the cloud emoji ☁️ displays perfectly on all iOS devices.
+// - (UI) Final Login Box Polish: Fine-tuned the vertical spacing in the login box for a more balanced and aesthetically pleasing layout.
+// - (UI) Perfected iOS Home Screen Icon: Uses a robust Base64 PNG for a flawless home screen icon on all iOS devices.
 // - (UI) All previous UI refinements for mobile and desktop are maintained.
 // - (Feature) Search, Sorting, and Bulk Move functionality is stable and complete.
 // =================================================================================
@@ -150,8 +151,7 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <!-- [修改] iOS 主屏幕图标使用 Base64 PNG -->
-  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
@@ -207,9 +207,28 @@ export default {
       background-repeat: no-repeat;
     }
     .login-box { padding: 40px; background-color: var(--card-bg); border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 380px; box-sizing: border-box; transition: all .3s ease; }
-    .login-logo { font-size: 4em; line-height: 1; margin-bottom: 20px; }
-    .login-box h1 { color: var(--c-primary); margin: 0 0 10px 0; }
-    .login-box input { width: 100%; box-sizing: border-box; padding: 12px; margin: 10px 0; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
+    .login-logo { font-size: 4em; line-height: 1; margin-bottom: 15px; }
+    .login-box h1 { color: var(--c-primary); margin: 0 0 8px 0; }
+    .input-with-icon {
+      position: relative;
+      width: 100%;
+      margin: 25px 0;
+    }
+    .input-with-icon .input-icon {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-light);
+      pointer-events: none;
+      width: 20px;
+      height: 20px;
+    }
+    .login-box input {
+      width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px;
+      background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;
+      color: var(--text-color); font-size: 1em;
+    }
     .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; }
     #login-error { color: var(--c-error); margin-top: 10px; height: 20px; }
     #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; }
@@ -370,6 +389,7 @@ export default {
     <symbol id="icon-doc" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-4H8V8h5v2zM6 20V4h7v5h5v11H6z"/></symbol>
     <symbol id="icon-arrow-up" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14l5-5l5 5H7z"/></symbol>
     <symbol id="icon-arrow-down" viewBox="0 0 24 24"><path fill="currentColor" d="M7 10l5 5l5-5H7z"/></symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a2 2 0 0 0 2-2a2 2 0 0 0-2-2a2 2 0 0 0-2 2a2 2 0 0 0 2 2m6-9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5a5 5 0 0 1 5 5v2h1m-6-5a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3Z"/></symbol>
   </defs></svg>
 
   <div id="login-view" ${loginViewStyleAttribute}>
@@ -377,7 +397,10 @@ export default {
       <div class="login-logo">☁️</div>
       <h1>Cloudflare-R2</h1>
       <p style="color:var(--text-light)">请输入访问密码</p>
-      <input type="password" id="password-input" placeholder="访问密码">
+      <div class="input-with-icon">
+        <svg class="input-icon"><use xlink:href="#icon-lock"></use></svg>
+        <input type="password" id="password-input" placeholder="输入访问密码">
+      </div>
       <button id="login-button">授 权 访 问</button>
       <p id="login-error"></p>
     </div>
