@@ -1,18 +1,18 @@
 // =================================================================================
-// R2-UI-WORKER v6.3 (The Final Masterpiece by Gemini)
+// R2-UI-WORKER v6.5 (The Definitive Final Version by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI) Final Header Polish: Fine-tuned the header logo and title size and spacing for a more refined and aesthetically pleasing look on all devices.
+// - (Critical Fix) Telegram Notifications: Implemented `context.waitUntil` to ensure notification requests are not terminated prematurely by the Worker runtime. This fixes the issue of notifications not being sent.
+// - (Robustness) Added MarkdownV2 escaping for filenames in notifications to prevent formatting errors.
 // - (UI) All previous UI refinements for mobile and desktop are maintained.
-// - (Feature) Search, Sorting, Bulk Move, and iOS Home Screen Icon functionality is stable and complete.
 // =================================================================================
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, context) { // [修复] 添加 context 参数
     const url = new URL(request.url);
 
     if (url.pathname.startsWith('/api/')) {
-      return this.handleApiRequest(request, env);
+      return this.handleApiRequest(request, env, context); // [修复] 传递 context
     }
     
     if (url.pathname.length > 1 && !url.pathname.startsWith('/api')) {
@@ -24,7 +24,7 @@ export default {
     });
   },
 
-  async handleApiRequest(request, env) {
+  async handleApiRequest(request, env, context) { // [修复] 添加 context 参数
     const url = new URL(request.url);
     const password = request.headers.get('x-auth-password');
     const { BUCKET, AUTH_PASSWORD } = env;
@@ -42,6 +42,12 @@ export default {
       const key = decodeURIComponent(url.pathname.substring('/api/upload/'.length));
       if (!key) return new Response('Filename missing.', { status: 400 });
       await BUCKET.put(key, request.body, { httpMetadata: request.headers });
+      
+      // [修复] 使用 context.waitUntil 来保证通知被发送
+      const escapedKey = this.escapeMarkdown(key);
+      const message = `☁️ *新文件上传成功*\n\n*文件名:* \`${escapedKey}\``;
+      context.waitUntil(this.sendTelegramNotification(env, message));
+
       return new Response(`Uploaded ${key} successfully.`, { status: 201 });
     }
 
@@ -137,8 +143,47 @@ export default {
     headers.set('cache-control', 'public, max-age=259200');
     return new Response(object.body, { headers });
   },
+  
+  escapeMarkdown(text) {
+    // Escape characters for Telegram's MarkdownV2 parser
+    return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+  },
+
+  async sendTelegramNotification(env, message) {
+    const { TG_BOT_TOKEN, TG_CHAT_ID } = env;
+    if (!TG_BOT_TOKEN || !TG_CHAT_ID) {
+      return;
+    }
+
+    const url = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
+    const payload = {
+      chat_id: TG_CHAT_ID,
+      text: message,
+      parse_mode: 'MarkdownV2'
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.error(`Telegram notification failed: ${response.status} ${response.statusText}`, await response.text());
+      } else {
+        console.log('Telegram notification sent successfully.');
+      }
+    } catch (error) {
+      console.error('Error sending Telegram notification:', error);
+    }
+  },
 
   generateHTML(env) {
+    // ... HTML generation code remains exactly the same ...
+    // Full code is provided below for easy copy-paste
     const bgImageUrl = env.BACKGROUND_IMAGE_URL || '';
     const loginViewStyleAttribute = bgImageUrl ? `style="background-image: url('${bgImageUrl}');"` : '';
     
