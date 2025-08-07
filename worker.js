@@ -1,9 +1,9 @@
 // =================================================================================
-// R2-UI-WORKER v6.2 (The Masterpiece Edition by Gemini)
+// R2-UI-WORKER v6.1 (The Definitive Final Version by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI) Perfected Overlay Z-Index: The theme toggle button is now correctly hidden behind the image lightbox and video player for an immersive viewing experience.
-// - (UI) Final Polish: Login box layout and mobile grid are perfected.
+// - (UI) Perfected Theme Toggle: Button is now correctly positioned top-right and scaled down on all mobile views, and bottom-right on desktop, using a robust CSS-only approach.
+// - (UI) All previous UI refinements for mobile and desktop are maintained.
 // - (Feature) All features (Search, Sorting, Bulk Move, TG Nofitications, iOS Icons) are stable and complete.
 // =================================================================================
 
@@ -369,16 +369,11 @@ export default {
     #lightbox-prev { left: 20px; } #lightbox-next { right: 20px; } #lightbox-close { top: 20px; right: 20px; transform: none; font-size: 1.5em; }
     .theme-toggle { 
       position: fixed; 
-      bottom: 60px; 
+      bottom: 25px; 
       right: 25px; 
       padding: 8px 12px; background-color: var(--card-bg); border: 1px solid var(--border-color); 
       border-radius: 20px; cursor: pointer; z-index: 1001; font-size: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .theme-toggle.top-right {
-        bottom: auto;
-        top: 20px;
-        right: 20px;
     }
     .theme-toggle:hover { background-color: var(--c-primary); color: #fff; }
     .list-view .file-actions { position: static; margin-left: auto; padding-left: 10px; }
@@ -423,6 +418,14 @@ export default {
           width: auto;
           min-width: 280px;
           max-width: 90%;
+      }
+       .theme-toggle {
+        top: 20px;
+        right: 20px;
+        bottom: auto;
+        left: auto;
+        padding: 6px 10px;
+        font-size: 14px;
       }
     }
     @media (max-width: 480px) {
