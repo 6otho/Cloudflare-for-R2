@@ -1,11 +1,10 @@
 // =================================================================================
-// R2-UI-WORKER v6.1 (The Final Masterpiece by Gemini)
+// R2-UI-WORKER v6.2 (The Final Aesthetic Polish by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI) Final Login Box Polish: Fine-tuned the vertical spacing in the login box for a more balanced and aesthetically pleasing layout.
-// - (UI) Perfected iOS Home Screen Icon: Uses a robust Base64 PNG for a flawless home screen icon on all iOS devices.
+// - (UI) Perfected Login Box Layout: Fine-tuned the vertical spacing in the login box for a more balanced and aesthetically pleasing layout, grouping the logo and title together.
+// - (UI) Increased logo size for better visual impact.
 // - (UI) All previous UI refinements for mobile and desktop are maintained.
-// - (Feature) Search, Sorting, and Bulk Move functionality is stable and complete.
 // =================================================================================
 
 export default {
@@ -207,12 +206,13 @@ export default {
       background-repeat: no-repeat;
     }
     .login-box { padding: 40px; background-color: var(--card-bg); border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 380px; box-sizing: border-box; transition: all .3s ease; }
-    .login-logo { font-size: 4em; line-height: 1; margin-bottom: 15px; }
-    .login-box h1 { color: var(--c-primary); margin: 0 0 8px 0; }
+    .login-logo { font-size: 4.5em; line-height: 1; margin-bottom: 5px; }
+    .login-box h1 { color: var(--c-primary); margin: 0 0 10px 0; }
+    .login-box .login-prompt { margin-top: 0; }
     .input-with-icon {
       position: relative;
       width: 100%;
-      margin: 25px 0;
+      margin: 30px 0;
     }
     .input-with-icon .input-icon {
       position: absolute;
@@ -396,7 +396,7 @@ export default {
     <div class="login-box">
       <div class="login-logo">☁️</div>
       <h1>Cloudflare-R2</h1>
-      <p style="color:var(--text-light)">请输入访问密码</p>
+      <p class="login-prompt" style="color:var(--text-light)">请输入访问密码</p>
       <div class="input-with-icon">
         <svg class="input-icon"><use xlink:href="#icon-lock"></use></svg>
         <input type="password" id="password-input" placeholder="输入访问密码">
