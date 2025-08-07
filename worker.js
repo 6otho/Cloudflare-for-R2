@@ -1,9 +1,9 @@
 // =================================================================================
-// R2-UI-WORKER v6.7 (The Ultimate Masterpiece by Gemini)
+// R2-UI-WORKER v6.1 (The Final Masterpiece by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (Feature) Move Notifications: The system now sends a Telegram notification when a file or folder is moved, providing the new, correct link and preventing dead links.
-// - (Robustness) Ensured all notification logic is non-blocking using context.waitUntil.
+// - (Feature) Persistent Login: Switched to localStorage to keep users logged in across browser sessions.
+// - (Feature) Logout Button: Added a logout button for user convenience and security.
 // - (UI) All previous UI refinements for mobile and desktop are maintained.
 // =================================================================================
 
@@ -43,7 +43,8 @@ export default {
       if (!key) return new Response('Filename missing.', { status: 400 });
       await BUCKET.put(key, request.body, { httpMetadata: request.headers });
       
-      const message = `☁️ *新文件上传成功*\n\n*文件名:* \`${this.escapeMarkdown(key)}\``;
+      const escapedKey = this.escapeMarkdown(key);
+      const message = `☁️ *新文件上传成功*\n\n*文件名:* \`${escapedKey}\``;
       context.waitUntil(this.sendTelegramNotification(env, request, key, message));
 
       return new Response(`Uploaded ${key} successfully.`, { status: 201 });
@@ -85,7 +86,32 @@ export default {
         
         const isFolder = oldKey.endsWith('/');
         if (isFolder) {
-            // ... (folder moving logic remains the same)
+            if (newKey.startsWith(oldKey)) {
+                return new Response('Invalid move. Cannot move a folder into itself.', { status: 400 });
+            }
+            const list = await BUCKET.list({ prefix: oldKey, limit: 1000 });
+            let objectsToMove = list.objects;
+            if (objectsToMove.length === 0) {
+                const emptyFolderObject = await BUCKET.head(oldKey);
+                if (emptyFolderObject) {
+                    objectsToMove = [{ key: oldKey, size: emptyFolderObject.size }];
+                }
+            }
+            if (objectsToMove.length === 0) {
+                return new Response(`Folder ${oldKey} not found or is empty.`, { status: 200 });
+            }
+            for (const obj of objectsToMove) {
+                const objectToCopy = await BUCKET.get(obj.key);
+                if (objectToCopy) {
+                    const newObjectKey = newKey + obj.key.substring(oldKey.length);
+                    await BUCKET.put(newObjectKey, objectToCopy.body, {
+                        httpMetadata: objectToCopy.httpMetadata,
+                        customMetadata: objectToCopy.customMetadata,
+                    });
+                }
+            }
+            const keysToDelete = objectsToMove.map(obj => obj.key);
+            await BUCKET.delete(keysToDelete);
         } else {
             const object = await BUCKET.get(oldKey);
             if (!object) return new Response('Object not found', { status: 404 });
@@ -93,7 +119,6 @@ export default {
             await BUCKET.delete(oldKey);
         }
         
-        // [新] 移动成功后发送通知
         const message = `➡️ *项目已移动*\n\n*从:* \`${this.escapeMarkdown(oldKey)}\`\n*到:* \`${this.escapeMarkdown(newKey)}\``;
         context.waitUntil(this.sendTelegramNotification(env, request, newKey, message));
 
@@ -180,8 +205,6 @@ export default {
   },
 
   generateHTML(env) {
-    // ... HTML generation code remains exactly the same ...
-    // Full code is provided below for easy copy-paste
     const bgImageUrl = env.BACKGROUND_IMAGE_URL || '';
     const loginViewStyleAttribute = bgImageUrl ? `style="background-image: url('${bgImageUrl}');"` : '';
     
@@ -471,6 +494,7 @@ export default {
         <button id="select-all-button">全选</button>
         <button id="move-selected-button" class="hidden">移动选中</button>
         <button id="delete-button" class="hidden">删除选中</button>
+        <button id="logout-button">登出</button>
       </div>
     </header>
     <div id="breadcrumb"></div>
@@ -501,6 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loginView: document.getElementById('login-view'), appView: document.getElementById('app-view'), fileContainer: document.getElementById('file-container'),
     loginButton: document.getElementById('login-button'), deleteButton: document.getElementById('delete-button'), viewToggleButton: document.getElementById('view-toggle-button'), selectAllButton: document.getElementById('select-all-button'),
     moveSelectedButton: document.getElementById('move-selected-button'),
+    logoutButton: document.getElementById('logout-button'),
     passwordInput: document.getElementById('password-input'), fileInput: document.getElementById('file-input'), dropZone: document.getElementById('drop-zone'),
     lightbox: document.getElementById('lightbox'), lightboxImage: document.getElementById('lightbox-image'), lightboxClose: document.getElementById('lightbox-close'), lightboxPrev: document.getElementById('lightbox-prev'), lightboxNext: document.getElementById('lightbox-next'),
     themeToggle: document.getElementById('global-theme-toggle'),
@@ -923,17 +948,24 @@ document.addEventListener('DOMContentLoaded', () => {
     G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
     try { 
       await apiCall('/api/list'); 
+      localStorage.setItem('r2-password', pw);
       if (G.pageHeader) G.pageHeader.classList.add('hidden');
       if (G.pageFooter) G.pageFooter.classList.add('hidden');
       G.loginView.classList.add('hidden'); 
       G.appView.classList.remove('hidden'); 
-      sessionStorage.setItem('r2-password', pw); 
       await refreshFileList(); 
     }
     catch (error) { document.getElementById('login-error').textContent = '密码错误'; setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); }
     finally { G.loginButton.textContent = "授 权 访 问"; G.loginButton.disabled = false; }
   };
   
+  const handleLogout = () => {
+    if (confirm('您确定要登出吗？')) {
+      localStorage.removeItem('r2-password');
+      location.reload();
+    }
+  };
+
   const handleUpload = async (files) => {
     showToast(\`开始上传 \${files.length} 个文件...\`);
     const uploadPromises = Array.from(files).map(file => {
@@ -964,6 +996,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const setupEventListeners = () => {
     G.themeToggle.addEventListener('click', toggleTheme);
     G.loginButton.addEventListener('click', handleLogin);
+    G.logoutButton.addEventListener('click', handleLogout);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
     G.deleteButton.addEventListener('click', () => handleDelete());
     G.createFolderButton.addEventListener('click', () => { G.newFolderName.value = ''; G.createFolderDialog.classList.add('show'); });
@@ -1115,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const init = () => {
     applyTheme();
-    const savedPassword = sessionStorage.getItem('r2-password');
+    const savedPassword = localStorage.getItem('r2-password');
     if (savedPassword) { 
         G.passwordInput.value = savedPassword; 
         handleLogin(); 
