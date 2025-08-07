@@ -1,10 +1,12 @@
-// =================================================================================
-// R2-UI-WORKER v6.1 (The Definitive Final Version by Gemini)
+// // =================================================================================
+// R2-UI-WORKER v6.2 (The Definitive Final Version by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI) Perfected Theme Toggle: Button is now correctly positioned top-right and scaled down on all mobile views, and bottom-right on desktop, using a robust CSS-only approach.
-// - (UI) All previous UI refinements for mobile and desktop are maintained.
-// - (Feature) All features (Search, Sorting, Bulk Move, TG Nofitications, iOS Icons) are stable and complete.
+// - (UI) Final Refinement: Sorting Overhaul. Replaced multiple sort buttons with a professional, intuitive two-button system:
+//   - One button cycles through sorting criteria (Time, Name, Size).
+//   - A separate, dedicated button toggles Ascending/Descending order.
+// - (Feature) Default sort is now by upload time (newest first) for a more intuitive user experience.
+// - All previous features and UI refinements are maintained and stable.
 // =================================================================================
 
 export default {
@@ -309,8 +311,8 @@ export default {
       border-radius: 8px; cursor: pointer; transition: all 0.2s; box-sizing: border-box;
     }
     .actions button:hover, .actions button.active { border-color: var(--c-primary); color: var(--c-primary); }
-    #view-toggle-button { width: 36px; padding: 0; }
-    #view-toggle-button svg { width: 20px; height: 20px; vertical-align: middle; }
+    #view-toggle-button, #sort-direction-button { width: 36px; padding: 0; }
+    #view-toggle-button svg, #sort-direction-button svg { width: 20px; height: 20px; vertical-align: middle; }
     #delete-button, #move-selected-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #move-selected-button { background-color: var(--c-primary); border-color: var(--c-primary); }
     #select-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
@@ -492,8 +494,8 @@ export default {
       <div class="actions">
         <button id="view-toggle-button" title="切换视图"></button>
         <button id="create-folder-button">新建文件夹</button>
-        <button id="sort-name-button">名称</button>
-        <button id="sort-size-button">大小</button>
+        <button id="sort-by-button"></button>
+        <button id="sort-direction-button"></button>
         <button id="select-all-button">全选</button>
         <button id="move-selected-button" class="hidden">移动选中</button>
         <button id="delete-button" class="hidden">删除选中</button>
@@ -539,17 +541,19 @@ document.addEventListener('DOMContentLoaded', () => {
     breadcrumb: document.getElementById('breadcrumb'),
     pageHeader: document.querySelector('.page-header'),
     pageFooter: document.querySelector('.page-footer'),
-    searchInput: document.getElementById('search-input'), // [新]
-    sortNameButton: document.getElementById('sort-name-button'), // [新]
-    sortSizeButton: document.getElementById('sort-size-button'), // [新]
+    searchInput: document.getElementById('search-input'),
+    sortByButton: document.getElementById('sort-by-button'),
+    sortDirectionButton: document.getElementById('sort-direction-button'),
     password: '', files: [], imageFiles: [], currentImageIndex: -1,
     theme: localStorage.getItem('theme') || 'dark', viewMode: localStorage.getItem('viewMode') || 'grid',
     isAllSelected: false, currentFileKey: null, currentMenu: null,
     currentPath: '',
-    keysToMove: [], // [新]
-    searchTerm: '', // [新]
-    sortBy: 'name', // [新]
-    sortDirection: 'asc', // [新]
+    keysToMove: [],
+    searchTerm: '',
+    sortBy: 'uploaded',
+    sortDirection: 'desc',
+    sortCycle: ['uploaded', 'name', 'size'],
+    sortDisplayNames: { uploaded: '上传时间', name: '名称', size: '大小' },
   };
 
   const showToast = (message, duration = 3000) => {
@@ -650,20 +654,10 @@ document.addEventListener('DOMContentLoaded', () => {
     G.moveSelectedButton.classList.toggle('hidden', !show);
   };
   
-  const updateSortButtonsUI = () => {
-    ['Name', 'Size'].forEach(type => {
-        const button = G[\`sort\${type}Button\`];
-        const sortKey = type.toLowerCase();
-        button.classList.remove('active');
-        const buttonText = type === 'Name' ? '名称' : '大小';
-        button.innerHTML = buttonText;
-        
-        if (G.sortBy === sortKey) {
-            button.classList.add('active');
-            const icon = G.sortDirection === 'asc' ? '#icon-arrow-up' : '#icon-arrow-down';
-            button.innerHTML = \`\${buttonText} <svg width="16" height="16" style="vertical-align: middle;"><use xlink:href="\${icon}"></use></svg>\`;
-        }
-    });
+  const updateSortUI = () => {
+    G.sortByButton.textContent = G.sortDisplayNames[G.sortBy];
+    const icon = G.sortDirection === 'asc' ? '#icon-arrow-up' : '#icon-arrow-down';
+    G.sortDirectionButton.innerHTML = \`<svg width="16" height="16" style="vertical-align: middle;"><use xlink:href="\${icon}"></use></svg>\`;
   };
 
   const renderFiles = () => {
@@ -698,7 +692,7 @@ document.addEventListener('DOMContentLoaded', () => {
       itemsInCurrentPath.unshift({ key: '..', isNav: true, path: parentPath });
     }
 
-    if (itemsInCurrentPath.length === 0) { G.fileContainer.innerHTML = \`<p style="text-align:center;color:var(--text-light);">\${G.searchTerm ? '未找到匹配项' : '此文件夹为空'}。</p>\`; updateSortButtonsUI(); return; }
+    if (itemsInCurrentPath.length === 0) { G.fileContainer.innerHTML = \`<p style="text-align:center;color:var(--text-light);">\${G.searchTerm ? '未找到匹配项' : '此文件夹为空'}。</p>\`; updateSortUI(); return; }
     
     G.imageFiles = itemsInCurrentPath.filter(f => !f.isNav && getFileIcon(f.key) === 'image');
     
@@ -711,7 +705,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!aIsFolder && bIsFolder) return 1;
 
         let comparison = 0;
-        if (G.sortBy === 'name') {
+        if (G.sortBy === 'uploaded') {
+            const dateA = a.uploaded ? new Date(a.uploaded) : new Date(0);
+            const dateB = b.uploaded ? new Date(b.uploaded) : new Date(0);
+            comparison = dateA - dateB;
+        } else if (G.sortBy === 'name') {
             comparison = a.key.localeCompare(b.key);
         } else if (G.sortBy === 'size') {
             comparison = a.size - b.size;
@@ -791,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         });
     }
-    updateSortButtonsUI();
+    updateSortUI();
   };
 
   const handleFileAction = (action, key) => {
@@ -1068,23 +1066,15 @@ document.addEventListener('DOMContentLoaded', () => {
       renderFiles();
     });
 
-    G.sortNameButton.addEventListener('click', () => {
-        if (G.sortBy === 'name') {
-            G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            G.sortBy = 'name';
-            G.sortDirection = 'asc';
-        }
+    G.sortByButton.addEventListener('click', () => {
+        const currentIndex = G.sortCycle.indexOf(G.sortBy);
+        const nextIndex = (currentIndex + 1) % G.sortCycle.length;
+        G.sortBy = G.sortCycle[nextIndex];
         renderFiles();
     });
 
-    G.sortSizeButton.addEventListener('click', () => {
-        if (G.sortBy === 'size') {
-            G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            G.sortBy = 'size';
-            G.sortDirection = 'asc';
-        }
+    G.sortDirectionButton.addEventListener('click', () => {
+        G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc';
         renderFiles();
     });
 
