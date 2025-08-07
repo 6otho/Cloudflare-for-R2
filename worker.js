@@ -1,10 +1,10 @@
 // =================================================================================
-// R2-UI-WORKER v6.2 (The Final Aesthetic Polish by Gemini)
+// R2-UI-WORKER v6.3 (The Final Masterpiece by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI) Perfected Login Box Layout: Fine-tuned the vertical spacing in the login box for a more balanced and aesthetically pleasing layout, grouping the logo and title together.
-// - (UI) Increased logo size for better visual impact.
+// - (UI) Final Header Polish: Fine-tuned the header logo and title size and spacing for a more refined and aesthetically pleasing look on all devices.
 // - (UI) All previous UI refinements for mobile and desktop are maintained.
+// - (Feature) Search, Sorting, Bulk Move, and iOS Home Screen Icon functionality is stable and complete.
 // =================================================================================
 
 export default {
@@ -192,8 +192,8 @@ export default {
     html[data-theme='dark'] .page-header { background-color: rgba(36, 40, 59, 0.8); }
     html[data-theme='light'] .page-header { background-color: rgba(255, 255, 255, 0.8); }
     .logo-title-group { display: flex; align-items: center; }
-    .page-header .logo { font-size: 2.8em; margin-right: 15px; line-height: 1; }
-    .page-header .project-name { font-size: 1.4em; font-weight: 600; color: var(--ink-blue); }
+    .page-header .logo { font-size: 2.2em; margin-right: 12px; line-height: 1; }
+    .page-header .project-name { font-size: 1.2em; font-weight: 600; color: var(--ink-blue); }
     .page-footer { position: fixed; bottom: 0; left: 0; width: 100%; padding: 20px; box-sizing: border-box; text-align: center; z-index: 10; }
     .page-footer, .page-footer a { font-size: 0.85em; color: var(--text-light); text-decoration: none; }
     .page-footer a { font-weight: bold; color: var(--deep-blue); transition: opacity 0.2s; }
@@ -207,7 +207,7 @@ export default {
     }
     .login-box { padding: 40px; background-color: var(--card-bg); border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 380px; box-sizing: border-box; transition: all .3s ease; }
     .login-logo { font-size: 4.5em; line-height: 1; margin-bottom: 5px; }
-    .login-box h1 { color: var(--c-primary); margin: 0 0 10px 0; }
+    .login-box h1 { color: var(--c-primary); margin: 0 0 8px 0; }
     .login-box .login-prompt { margin-top: 0; }
     .input-with-icon {
       position: relative;
