@@ -1,10 +1,10 @@
 // =================================================================================
-// R2-UI-WORKER v6.1 (The Final Masterpiece by Gemini)
+// R2-UI-WORKER v6.2 (The Masterpiece Edition by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (Feature) Persistent Login: Switched to localStorage to keep users logged in across browser sessions.
-// - (Feature) Logout Button: Added a logout button for user convenience and security.
-// - (UI) All previous UI refinements for mobile and desktop are maintained.
+// - (UI) Perfected Overlay Z-Index: The theme toggle button is now correctly hidden behind the image lightbox and video player for an immersive viewing experience.
+// - (UI) Final Polish: Login box layout and mobile grid are perfected.
+// - (Feature) All features (Search, Sorting, Bulk Move, TG Nofitications, iOS Icons) are stable and complete.
 // =================================================================================
 
 export default {
@@ -363,7 +363,7 @@ export default {
     .grid-view .checkbox { position: absolute; bottom: 5px; left: 5px; z-index: 5; opacity: 0; transition: opacity .2s ease-in-out; }
     .grid-view .file-item:hover .checkbox, .grid-view .file-item.selected .checkbox { opacity: 1; }
     .checkbox { width: 20px; height: 20px; accent-color: var(--c-primary); cursor: pointer; }
-    #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+    #lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 5000; }
     #lightbox img { max-width: 90%; max-height: 90%; object-fit: contain; }
     .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: #fff; border: none; font-size: 2em; padding: 10px 15px; cursor: pointer; border-radius: 8px; }
     #lightbox-prev { left: 20px; } #lightbox-next { right: 20px; } #lightbox-close { top: 20px; right: 20px; transform: none; font-size: 1.5em; }
@@ -507,8 +507,8 @@ export default {
     <button id="lightbox-close" class="lightbox-nav">&times;</button><button id="lightbox-prev" class="lightbox-nav">&#10094;</button><button id="lightbox-next" class="lightbox-nav">&#10095;</button><img id="lightbox-image" src="" alt="Image preview">
   </div>
   
-  <div id="video-player" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 1000;">
-    <button id="video-close" style="position: absolute; top: 20px; right: 20px; color: #fff; background: transparent; border: none; font-size: 2em; cursor: pointer; z-index: 1001;">&times;</button>
+  <div id="video-player" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 5000;">
+    <button id="video-close" style="position: absolute; top: 20px; right: 20px; color: #fff; background: transparent; border: none; font-size: 2em; cursor: pointer; z-index: 5001;">&times;</button>
     <video id="video-element" controls style="max-width: 90%; max-height: 90%;" src=""></video>
   </div>
   
@@ -953,19 +953,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (G.pageFooter) G.pageFooter.classList.add('hidden');
       G.loginView.classList.add('hidden'); 
       G.appView.classList.remove('hidden'); 
+      updateThemeTogglePosition();
       await refreshFileList(); 
     }
     catch (error) { document.getElementById('login-error').textContent = '密码错误'; setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); }
     finally { G.loginButton.textContent = "授 权 访 问"; G.loginButton.disabled = false; }
   };
-  
+
   const handleLogout = () => {
     if (confirm('您确定要登出吗？')) {
       localStorage.removeItem('r2-password');
       location.reload();
     }
   };
-
+  
   const handleUpload = async (files) => {
     showToast(\`开始上传 \${files.length} 个文件...\`);
     const uploadPromises = Array.from(files).map(file => {
