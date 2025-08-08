@@ -1,14 +1,12 @@
 // =================================================================================
-// R2-UI-WORKER v7.4 (Refined by AI Assistant)
+// R2-UI-WORKER v7.6 (Refined by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI Feature) ADDED FILE LIST HEADER: A persistent header with a logo and a theme-toggle button
-//   is now visible on the file list page, mirroring the login screen's header style.
-//   The theme toggle is responsive and smaller on mobile devices.
-// - (UI/UX Fix) ADAPTIVE & FOREGROUND MENU: The three-dot action menu on file items now
-//   intelligently positions itself upwards or downwards to avoid going off-screen.
-//   It also now correctly renders in the foreground, preventing it from being obscured
-//   by other elements, thanks to a z-index adjustment on the active item.
+// - (UI/UX Fix) FULLY ADAPTIVE MENU: The action menu now also adapts horizontally.
+//   It will intelligently open to the left when the file item is near the right
+//   edge of the viewport, preventing the menu from being cut off. This works
+//   on both desktop and mobile.
+// - All features from v7.5 are maintained.
 // =================================================================================
 
 export default {
@@ -249,7 +247,7 @@ export default {
     .hidden { display: none !important; }
     .page-header {
       position: fixed; top: 0; left: 0; width: 100%; height: 72px; padding: 0 25px; box-sizing: border-box;
-      display: flex; align-items: center; justify-content: space-between; /* MODIFIED: space-between for alignment */
+      display: flex; align-items: center; justify-content: space-between;
       background-color: rgba(var(--card-bg-rgb), 0.8); backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); z-index: 10;
     }
@@ -275,7 +273,7 @@ export default {
     .login-box input { width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
     .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; }
     #login-error { color: var(--c-error); margin-top: 10px; height: 20px; }
-    #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; padding-top: 92px; /* ADDED: Padding to avoid overlap with fixed header */ }
+    #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; padding-top: 92px; }
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
     header h1 { color: var(--c-primary); margin: 0; font-size: 1.8em; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -315,7 +313,6 @@ export default {
     .list-view .checkbox { margin-left: 0; margin-right: 10px; }
     .file-container.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
     .grid-view .file-item { position: relative; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; cursor: pointer; }
-    /* ADDED: z-index for active menu item */
     .grid-view .file-item.menu-active { z-index: 15; }
     .grid-view .file-item:hover { transform: translateY(-5px); }
     .grid-view .file-item.selected { border-color: var(--c-primary); transform: translateY(0) !important; }
@@ -334,12 +331,11 @@ export default {
     #lightbox-prev { left: 20px; } #lightbox-next { right: 20px; } #lightbox-close { top: 20px; right: 20px; transform: none; font-size: 1.5em; }
     .theme-toggle { position: fixed; bottom: 25px; right: 25px; padding: 8px 12px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; z-index: 1001; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .theme-toggle:hover { background-color: var(--c-primary); color: #fff; }
-    /* ADDED: Header theme toggle button style */
     .theme-toggle-header { background: none; border: none; cursor: pointer; font-size: 22px; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background-color .2s; }
     .theme-toggle-header:hover { background-color: var(--border-color); }
     .list-view .file-actions { position: static; margin-left: auto; padding-left: 10px; }
     .list-view .menu-button { width: 20px; height: 20px; font-size: 14px; }
-    .list-view .menu-items { bottom: auto; top: 30px; right: 0; }
+    .list-view .menu-items { right: 0; }
     .grid-view .file-actions { position: absolute; bottom: 5px; right: 5px; z-index: 10; opacity: 0; transition: opacity 0.2s ease-in-out; }
     .grid-view .file-item:hover .file-actions, .grid-view .file-item.selected .file-actions { opacity: 1; }
     .menu-button-wrapper { position: relative; }
@@ -347,10 +343,15 @@ export default {
     .menu-button:hover { opacity: 1; background-color: var(--c-primary); color: white; }
     .menu-button::after { content: "⋮"; font-size: 16px; font-weight: bold; }
     .menu-items { position: absolute; background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 20; width: max-content; min-width: 120px; overflow: hidden; display: none; }
-    /* ADDED: Adaptive menu positioning styles */
-    .grid-view .menu-items { top: 110%; /* Default down */ }
-    .grid-view .menu-items.menu-popup-up { top: auto; bottom: 110%; /* Pop up */ }
-    .list-view .menu-items.menu-popup-up { top: auto; bottom: 100%; }
+    .grid-view .menu-items { top: 110%; right: 0; }
+    .grid-view .menu-items.menu-popup-up { top: auto; bottom: 110%; }
+    .list-view .menu-items { top: 105%; }
+    .list-view .menu-items.menu-popup-up { top: auto; bottom: 105%; }
+    /* ADDED: Style for left-popping menu */
+    .menu-items.menu-popup-left {
+        right: 100%;
+        left: auto;
+    }
     .actions .menu-items { right: 0; top: 42px; }
     .menu-items.show { display: block; }
     .menu-item { padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap;}
@@ -376,7 +377,6 @@ export default {
       .page-header { flex-direction: row; align-items: center; padding: 0 15px; }
       .page-header .logo { font-size: 2em; margin-right: 8px;}
       .page-header .project-name { font-size: 1.1em; }
-      /* ADDED: Smaller theme toggle for header on mobile */
       .theme-toggle-header { font-size: 18px; padding: 6px; }
       #app-view { padding-top: 82px; }
       .page-footer { font-size: 0.7em; }
@@ -404,7 +404,6 @@ export default {
 </head>
 <body>
 
-  <!-- MODIFIED: Header now contains a theme toggle button -->
   <header class="page-header hidden">
     <div class="logo-title-group">
       <span class="logo">☁️</span>
@@ -518,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
     moveSelectedButton: document.getElementById('move-selected-button'), logoutButton: document.getElementById('logout-button'), passwordInput: document.getElementById('password-input'),
     fileInput: document.getElementById('file-input'), dropZone: document.getElementById('drop-zone'), lightbox: document.getElementById('lightbox'), lightboxImage: document.getElementById('lightbox-image'),
     lightboxClose: document.getElementById('lightbox-close'), lightboxPrev: document.getElementById('lightbox-prev'), lightboxNext: document.getElementById('lightbox-next'),
-    themeToggle: document.getElementById('global-theme-toggle'), headerThemeToggle: document.getElementById('header-theme-toggle'), // ADDED
+    themeToggle: document.getElementById('global-theme-toggle'), headerThemeToggle: document.getElementById('header-theme-toggle'),
     renameDialog: document.getElementById('rename-dialog'), newFilename: document.getElementById('new-filename'),
     renameCancel: document.getElementById('rename-cancel'), renameConfirm: document.getElementById('rename-confirm'), createFolderButton: document.getElementById('create-folder-button'),
     createFolderDialog: document.getElementById('create-folder-dialog'), newFolderName: document.getElementById('new-folder-name'), createFolderCancel: document.getElementById('create-folder-cancel'),
@@ -563,7 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const formatBytes = (bytes, d=2) => { if(!+bytes)return"0 Bytes";const i=Math.floor(Math.log(bytes)/Math.log(1024)); return \`\${parseFloat((bytes/Math.pow(1024,i)).toFixed(d))} \${"Bytes,KB,MB,GB,TB"[i]}\` };
   const apiCall = async (endpoint, options = {}) => { const headers = { 'x-auth-password': G.password, ...options.headers }; const response = await fetch(endpoint, { ...options, headers }); if (!response.ok) throw new Error(await response.text() || \`HTTP error! \${response.status}\`); return response; };
   
-  // MODIFIED: applyTheme now updates both toggle buttons
   const applyTheme = () => {
     document.documentElement.setAttribute('data-theme', G.theme);
     const toggles = [G.themeToggle, G.headerThemeToggle];
@@ -711,7 +709,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const pw = G.passwordInput.value; if (!pw) return; G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
     try { 
       await apiCall('/api/list'); localStorage.setItem('r2-password', pw);
-      // MODIFIED: Show header, hide floating theme toggle
       if (G.pageHeader) G.pageHeader.classList.remove('hidden'); 
       if (G.themeToggle) G.themeToggle.classList.add('hidden');
       if (G.pageFooter) G.pageFooter.classList.add('hidden');
@@ -738,7 +735,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const setupEventListeners = () => {
     G.themeToggle.addEventListener('click', toggleTheme);
-    G.headerThemeToggle.addEventListener('click', toggleTheme); // ADDED
+    G.headerThemeToggle.addEventListener('click', toggleTheme);
     G.loginButton.addEventListener('click', handleLogin);
     G.logoutButton.addEventListener('click', handleLogout);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
@@ -802,86 +799,95 @@ document.addEventListener('DOMContentLoaded', () => {
     G.sortByButton.addEventListener('click', () => { const currentIndex = G.sortCycle.indexOf(G.sortBy); const nextIndex = (currentIndex + 1) % G.sortCycle.length; G.sortBy = G.sortCycle[nextIndex]; renderFiles(); });
     G.sortDirectionButton.addEventListener('click', () => { G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc'; renderFiles(); });
     
-    // MODIFIED: Click listener for file container to handle new menu logic
+    // MODIFIED: Click listener with fully adaptive menu logic
     G.fileContainer.addEventListener('click', e => {
-        const menuButton = e.target.closest('.menu-button');
-        const fileItem = e.target.closest('.file-item');
+        const target = e.target;
+        const fileItem = target.closest('.file-item');
         if (!fileItem) return;
+
         const key = fileItem.dataset.key;
-
-        // Logic for menu button click (adaptive position & z-index)
-        if (menuButton) {
-            e.stopPropagation();
-            const menu = fileItem.querySelector('.menu-items');
-            if (!menu) return;
-            
-            // Close any other open menu
-            if (G.currentMenu && G.currentMenu !== menu) {
-                G.currentMenu.classList.remove('show', 'menu-popup-up');
-                G.currentMenu.closest('.file-item')?.classList.remove('menu-active');
-            }
-
-            const isNowVisible = !menu.classList.contains('show');
-            menu.classList.toggle('show', isNowVisible);
-            fileItem.classList.toggle('menu-active', isNowVisible);
-
-            if (isNowVisible) {
-                const menuRect = menu.getBoundingClientRect();
-                const buttonRect = menuButton.getBoundingClientRect();
-                if (buttonRect.bottom + menuRect.height > window.innerHeight) {
-                    menu.classList.add('menu-popup-up');
-                } else {
-                    menu.classList.remove('menu-popup-up');
-                }
-                G.currentMenu = menu;
-            } else {
-                G.currentMenu = null;
-            }
-            return;
-        }
         
-        // Logic for other clicks on the file item
-        if (e.target.matches('.checkbox')) {
-            fileItem.classList.toggle('selected', e.target.checked);
-            const totalCheckboxes = document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').length;
-            const checkedCheckboxes = document.querySelectorAll('.checkbox:checked').length;
-            G.isAllSelected = totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes;
-            updateBulkActionsState();
-            return;
-        }
+        // --- 1. Handle specific interactive elements first (checkbox, menu) ---
+        if (target.matches('.checkbox') || target.closest('.file-actions')) {
+            if (target.matches('.checkbox')) {
+                fileItem.classList.toggle('selected', target.checked);
+                updateBulkActionsState();
+            }
+            if (target.closest('.menu-button')) {
+                e.stopPropagation();
+                const menuButton = target.closest('.menu-button');
+                const menu = fileItem.querySelector('.menu-items');
+                if (G.currentMenu && G.currentMenu !== menu) {
+                    G.currentMenu.classList.remove('show', 'menu-popup-up', 'menu-popup-left');
+                    G.currentMenu.closest('.file-item')?.classList.remove('menu-active');
+                }
+                const isNowVisible = !menu.classList.contains('show');
+                menu.classList.toggle('show', isNowVisible);
+                fileItem.classList.toggle('menu-active', isNowVisible);
 
-        if (e.target.closest('.menu-item')) {
-            e.stopPropagation();
-            const action = e.target.closest('.menu-item').dataset.action;
-            if (action) {
-                handleFileAction(action, key);
-                e.target.closest('.menu-items').classList.remove('show');
-                fileItem.classList.remove('menu-active');
-                G.currentMenu = null;
+                if (isNowVisible) {
+                    const buttonRect = menuButton.getBoundingClientRect();
+                    
+                    // Vertical check
+                    if (buttonRect.bottom + menu.offsetHeight > window.innerHeight) { menu.classList.add('menu-popup-up'); } 
+                    else { menu.classList.remove('menu-popup-up'); }
+                    
+                    // ADDED: Horizontal check
+                    if (buttonRect.left + menu.offsetWidth > window.innerWidth) { menu.classList.add('menu-popup-left'); } 
+                    else { menu.classList.remove('menu-popup-left'); }
+
+                    G.currentMenu = menu;
+                } else { G.currentMenu = null; }
+            }
+            if (target.closest('.menu-item')) {
+                e.stopPropagation();
+                const action = target.closest('.menu-item').dataset.action;
+                if (action) {
+                    handleFileAction(action, key);
+                    target.closest('.menu-items').classList.remove('show');
+                    fileItem.classList.remove('menu-active');
+                    G.currentMenu = null;
+                }
             }
             return;
         }
 
-        const fileType = getFileIcon(key);
+        // --- 2. Handle general item clicks ---
         const isFolder = key.endsWith('/') || key === '..';
+        
+        // Special click logic for mobile grid view's info area
+        if (G.viewMode === 'grid' && window.innerWidth <= 767 && !isFolder && target.closest('.info')) {
+            const checkbox = fileItem.querySelector('.checkbox');
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                fileItem.classList.toggle('selected', checkbox.checked);
+                updateBulkActionsState();
+            }
+            return; // Prevent lightbox/video from opening
+        }
+
+        // Default action: navigate folder or open file
         if (isFolder) {
             G.currentPath = (key === '..') ? fileItem.dataset.path : key;
             G.isAllSelected = false;
             renderFiles();
             updateBulkActionsState();
-        } else if (fileType === 'image') {
-            const imageIndex = G.imageFiles.findIndex(f => f.key === key);
-            if (imageIndex > -1) openLightbox(imageIndex);
-        } else if (fileType === 'video') {
-            G.videoElement.src = \`/\${encodeURIComponent(key)}\`;
-            G.videoPlayer.classList.remove('hidden');
-            G.videoElement.play().catch(err => console.error("Video play failed:", err));
+        } else {
+            const fileType = getFileIcon(key);
+            if (fileType === 'image') {
+                const imageIndex = G.imageFiles.findIndex(f => f.key === key);
+                if (imageIndex > -1) openLightbox(imageIndex);
+            } else if (fileType === 'video') {
+                G.videoElement.src = \`/\${encodeURIComponent(key)}\`;
+                G.videoPlayer.classList.remove('hidden');
+                G.videoElement.play().catch(err => console.error("Video play failed:", err));
+            }
         }
     });
-    
+
     document.addEventListener('click', (e) => {
         if (G.currentMenu && !e.target.closest('.menu-button-wrapper')) {
-            G.currentMenu.classList.remove('show', 'menu-popup-up');
+            G.currentMenu.classList.remove('show', 'menu-popup-up', 'menu-popup-left');
             G.currentMenu.closest('.file-item')?.classList.remove('menu-active');
             G.currentMenu = null;
         }
@@ -904,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
       handleLogin();
     } else {
       if (G.pageHeader) G.pageHeader.classList.remove('hidden');
-      if (G.themeToggle) G.themeToggle.classList.add('hidden'); // Hide floating toggle on login page
+      if (G.themeToggle) G.themeToggle.classList.add('hidden');
       if (G.pageFooter) G.pageFooter.classList.remove('hidden');
     }
     applyViewMode();
