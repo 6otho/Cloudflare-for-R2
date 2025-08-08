@@ -1,12 +1,15 @@
-// // =================================================================================
-// R2-UI-WORKER v6.2 (The Definitive Final Version by Gemini)
+// =================================================================================
+// R2-UI-WORKER v7.2 (The Definitive Final Version by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI) Final Refinement: Sorting Overhaul. Replaced multiple sort buttons with a professional, intuitive two-button system:
-//   - One button cycles through sorting criteria (Time, Name, Size).
-//   - A separate, dedicated button toggles Ascending/Descending order.
-// - (Feature) Default sort is now by upload time (newest first) for a more intuitive user experience.
-// - All previous features and UI refinements are maintained and stable.
+// - (UI Fix) PERFECTED Sort Buttons: The sort buttons are now visually grouped into a
+//   single "capsule" component on both desktop and mobile, making their relationship
+//   clear and improving the UI's professional look as requested.
+// - (UI Fix) PERFECTED Desktop Button Logic: "Select All" button is now REPLACED by a
+//   group of "Delete/Move/Deselect" buttons in the exact same spot, solving both the
+//   layout shift and the awkward empty space issue.
+// - All other features from the last stable version (mobile menu, search icon, etc.)
+//   are maintained. This is the definitive version.
 // =================================================================================
 
 export default {
@@ -16,14 +19,15 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       return this.handleApiRequest(request, env, context);
     }
-    
+
     if (url.pathname.length > 1 && !url.pathname.startsWith('/api')) {
       return this.handleFileDownload(request, env);
     }
-    
+
     return new Response(this.generateHTML(env), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
+
   },
 
   async handleApiRequest(request, env, context) {
@@ -44,7 +48,7 @@ export default {
       const key = decodeURIComponent(url.pathname.substring('/api/upload/'.length));
       if (!key) return new Response('Filename missing.', { status: 400 });
       await BUCKET.put(key, request.body, { httpMetadata: request.headers });
-      
+
       const escapedKey = this.escapeMarkdown(key);
       const message = `☁️ *新文件上传成功*\n\n*文件名:* \`${escapedKey}\``;
       context.waitUntil(this.sendTelegramNotification(env, request, key, message));
@@ -60,24 +64,24 @@ export default {
         return new Response(`Deleted ${keys.length} objects.`, { status: 200 });
       } catch (e) { return new Response('Invalid JSON format.', { status: 400 }); }
     }
-    
+
     if (request.method === 'POST' && url.pathname === '/api/create-folder') {
-        try {
-            const { folderName } = await request.json();
-            const trimmedName = folderName.trim();
-            if (!trimmedName || trimmedName.includes('/')) {
-                return new Response('Invalid folder name. It cannot be empty or contain slashes.', { status: 400 });
-            }
-            const key = `${trimmedName}/`;
-            const existing = await BUCKET.head(key);
-            if (existing) {
-                return new Response('An object with this name already exists.', { status: 409 });
-            }
-            await BUCKET.put(key, null);
-            return new Response(`Folder ${key} created successfully.`, { status: 201 });
-        } catch (e) {
-            return new Response('Invalid request: ' + e.message, { status: 400 });
+      try {
+        const { folderName } = await request.json();
+        const trimmedName = folderName.trim();
+        if (!trimmedName || trimmedName.includes('/')) {
+          return new Response('Invalid folder name. It cannot be empty or contain slashes.', { status: 400 });
         }
+        const key = `${trimmedName}/`;
+        const existing = await BUCKET.head(key);
+        if (existing) {
+          return new Response('An object with this name already exists.', { status: 409 });
+        }
+        await BUCKET.put(key, null);
+        return new Response(`Folder ${key} created successfully.`, { status: 201 });
+      } catch (e) {
+        return new Response('Invalid request: ' + e.message, { status: 400 });
+      }
     }
 
     if (request.method === 'POST' && url.pathname === '/api/move') {
@@ -85,7 +89,7 @@ export default {
         const { oldKey, newKey } = await request.json();
         if (!oldKey || !newKey) return new Response('Both oldKey and newKey are required.', { status: 400 });
         if (oldKey === newKey) return new Response('Source and destination are the same.', { status: 400 });
-        
+
         const isFolder = oldKey.endsWith('/');
         if (isFolder) {
             if (newKey.startsWith(oldKey)) {
@@ -120,31 +124,34 @@ export default {
             await BUCKET.put(newKey, object.body, { httpMetadata: object.httpMetadata, customMetadata: object.customMetadata });
             await BUCKET.delete(oldKey);
         }
-        
+
         const message = `➡️ *项目已移动*\n\n*从:* \`${this.escapeMarkdown(oldKey)}\`\n*到:* \`${this.escapeMarkdown(newKey)}\``;
         context.waitUntil(this.sendTelegramNotification(env, request, newKey, message));
 
         return new Response(`Moved ${oldKey} to ${newKey} successfully.`, { status: 200 });
+
       } catch (e) { return new Response('Error moving file: ' + e.message, { status: 500 }); }
     }
 
     return new Response('API endpoint not found.', { status: 404 });
+
   },
 
   async handleFileDownload(request, env) {
     const key = decodeURIComponent(new URL(request.url).pathname.slice(1));
     const object = await env.BUCKET.get(key);
     if (object === null) return new Response('Object Not Found', { status: 404 });
-    
+
     if (object.size === 0 && key.endsWith('/')) {
-        return new Response('This is a folder, not a downloadable file.', { status: 400 });
+      return new Response('This is a folder, not a downloadable file.', { status: 400 });
     }
 
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
-    headers.set('cache-control', 'public, max-age=259200');
+    headers.set('cache-control', 'public, max-age=259200'); 
     return new Response(object.body, { headers });
+
   },
   
   isImageFile(key) {
@@ -154,7 +161,8 @@ export default {
   },
 
   escapeMarkdown(text) {
-    return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+    if (!text) return '';
+    return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
   },
 
   async sendTelegramNotification(env, request, key, text) {
@@ -162,7 +170,7 @@ export default {
     if (!TG_BOT_TOKEN || !TG_CHAT_ID) {
       return;
     }
-    
+
     const baseUrl = new URL(request.url).origin;
     const fileUrl = `${baseUrl}/${encodeURIComponent(key)}`;
     const isImage = this.isImageFile(key);
@@ -204,6 +212,7 @@ export default {
     } catch (error) {
       console.error('Error sending Telegram notification:', error);
     }
+
   },
 
   generateHTML(env) {
@@ -218,28 +227,21 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
       --c-light-bg: #eff1f5; --c-light-card: #ffffff; --c-light-text: #4c4f69; --c-light-text-light: #5c5f77; --c-light-border: #ccd0da;
       --c-primary: #7aa2f7; --c-success: #9ece6a; --c-error: #f7768e; --c-accent: #bb9af7;
-      --c-ink-blue-light: #2c3e50;
-      --c-ink-blue-dark: #a6c1ee;
-      --c-deep-blue-light: #1d3557;
-      --c-deep-blue-dark: #457b9d;
+      --c-ink-blue-light: #2c3e50; --c-ink-blue-dark: #a6c1ee; --c-deep-blue-light: #1d3557; --c-deep-blue-dark: #457b9d;
     }
     html[data-theme='dark'] {
       --bg-color: var(--c-dark-bg); --card-bg: var(--c-dark-card); --text-color: var(--c-dark-text); --text-light: var(--c-dark-text-light); --border-color: var(--c-dark-border);
-      --ink-blue: var(--c-ink-blue-dark);
-      --deep-blue: var(--c-deep-blue-dark);
-      --uploader-bg: rgba(187, 154, 247, 0.05);
+      --ink-blue: var(--c-ink-blue-dark); --deep-blue: var(--c-deep-blue-dark); --uploader-bg: rgba(187, 154, 247, 0.05);
     }
     html[data-theme='light'] {
       --bg-color: var(--c-light-bg); --card-bg: var(--c-light-card); --text-color: var(--c-light-text); --text-light: var(--c-light-text-light); --border-color: var(--c-light-border);
-      --ink-blue: var(--c-ink-blue-light);
-      --deep-blue: var(--c-deep-blue-light);
-      --uploader-bg: rgba(122, 162, 247, 0.1);
+      --ink-blue: var(--c-ink-blue-light); --deep-blue: var(--c-deep-blue-light); --uploader-bg: rgba(122, 162, 247, 0.1);
     }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; 
@@ -247,17 +249,9 @@ export default {
     }
     .hidden { display: none !important; }
     .page-header {
-      position: fixed; top: 0; left: 0; width: 100%;
-      height: 72px;
-      padding: 0 35px;
-      box-sizing: border-box;
-      display: flex;
-      align-items: center;
-      background-color: rgba(var(--card-bg-rgb), 0.8);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-bottom: 1px solid var(--border-color);
-      z-index: 10;
+      position: fixed; top: 0; left: 0; width: 100%; height: 72px; padding: 0 35px; box-sizing: border-box;
+      display: flex; align-items: center; background-color: rgba(var(--card-bg-rgb), 0.8); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); z-index: 10;
     }
     html[data-theme='dark'] .page-header { background-color: rgba(36, 40, 59, 0.8); }
     html[data-theme='light'] .page-header { background-color: rgba(255, 255, 255, 0.8); }
@@ -268,74 +262,48 @@ export default {
     .page-footer, .page-footer a { font-size: 0.85em; color: var(--text-light); text-decoration: none; }
     .page-footer a { font-weight: bold; color: var(--deep-blue); transition: opacity 0.2s; }
     .page-footer a:hover { opacity: 0.8; }
-    
-    #login-view { 
+    #login-view {
       display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh;
-      background-size: cover;
-      background-position: center center;
-      background-repeat: no-repeat;
+      background-size: cover; background-position: center center; background-repeat: no-repeat;
     }
     .login-box { padding: 40px; background-color: var(--card-bg); border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 380px; box-sizing: border-box; transition: all .3s ease; }
     .login-logo { font-size: 4.5em; line-height: 1; margin-bottom: 5px; }
     .login-box h1 { color: var(--c-primary); margin: 0 0 8px 0; }
     .login-box .login-prompt { margin-top: 0; }
-    .input-with-icon {
-      position: relative;
-      width: 100%;
-      margin: 30px 0;
-    }
-    .input-with-icon .input-icon {
-      position: absolute;
-      left: 15px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-light);
-      pointer-events: none;
-      width: 20px;
-      height: 20px;
-    }
-    .login-box input {
-      width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px;
-      background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px;
-      color: var(--text-color); font-size: 1em;
-    }
+    .input-with-icon { position: relative; width: 100%; margin: 30px 0; }
+    .input-with-icon .input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-light); pointer-events: none; width: 20px; height: 20px; }
+    .login-box input { width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
     .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; }
     #login-error { color: var(--c-error); margin-top: 10px; height: 20px; }
     #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; }
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
     header h1 { color: var(--c-primary); margin: 0; font-size: 1.8em; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .actions button {
+    .actions button, .actions .menu-button-wrapper button, #bulk-actions-container button {
       height: 36px; padding: 0 12px; font-size: 0.9em; display: flex; align-items: center; justify-content: center;
       background: var(--card-bg); color: var(--text-light); border: 1px solid var(--border-color);
       border-radius: 8px; cursor: pointer; transition: all 0.2s; box-sizing: border-box;
     }
-    .actions button:hover, .actions button.active { border-color: var(--c-primary); color: var(--c-primary); }
-    #view-toggle-button, #sort-direction-button { width: 36px; padding: 0; }
-    #view-toggle-button svg, #sort-direction-button svg { width: 20px; height: 20px; vertical-align: middle; }
-    #delete-button, #move-selected-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
+    .actions button:hover, .actions button.active, .actions .menu-button-wrapper button:hover, #bulk-actions-container button:hover { border-color: var(--c-primary); color: var(--c-primary); }
+    #view-toggle-button { width: 36px; padding: 0; }
+    #view-toggle-button svg { width: 20px; height: 20px; }
+    #select-all-button, #deselect-all-button, #mobile-select-menu-trigger { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
+    #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #move-selected-button { background-color: var(--c-primary); border-color: var(--c-primary); }
-    #select-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
+    .sort-button-group { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;}
+    .sort-button-group:hover { border-color: var(--c-primary); }
+    .sort-button-group button { border: none; border-radius: 0; }
+    .sort-button-group button:first-child { border-right: 1px solid var(--border-color); }
+    .sort-button-group button:last-child { width: 36px; padding: 0; }
+    .sort-button-group button svg { width: 20px; height: 20px; }
     #breadcrumb { margin-bottom: 20px; padding: 10px 15px; background-color: var(--card-bg); border-radius: 8px; font-size: 0.9em; word-break: break-all;}
     #breadcrumb a { color: var(--c-primary); text-decoration: none; }
     #breadcrumb a:hover { text-decoration: underline; }
     #breadcrumb span { color: var(--text-light); }
-    #search-input {
-      width: 100%;
-      padding: 12px 15px;
-      margin-bottom: 20px;
-      font-size: 1em;
-      color: var(--text-color);
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      box-sizing: border-box;
-    }
-    .uploader { 
-        border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; 
-        text-align: center; cursor: pointer; margin-bottom: 20px;
-        background-color: var(--uploader-bg);
-    }
+    .search-wrapper { position: relative; margin-bottom: 20px; }
+    .search-wrapper svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--text-light); pointer-events: none; }
+    #search-input { width: 100%; padding: 12px 15px 12px 45px; font-size: 1em; color: var(--text-color); background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
+    .uploader { border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 20px; background-color: var(--uploader-bg); }
     .uploader.dragging { background-color: var(--c-primary); color: #fff; }
     .file-container.list-view { display: block; }
     .file-container.list-view .file-item { display: flex; align-items: center; padding: 10px; background-color: var(--card-bg); border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
@@ -353,14 +321,7 @@ export default {
     .grid-view .icon img, .grid-view .icon video { width: 100%; height: 100%; object-fit: cover; border-top-left-radius: 10px; border-top-right-radius: 10px; }
     .grid-view .icon svg { width: 40%; height: 40%; max-width: 64px; color: var(--c-primary); }
     .grid-view .info { padding: 15px; text-align: center; }
-    .grid-view .filename {
-        font-weight: bold;
-        margin-bottom: 5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: block;
-    }
+    .grid-view .filename { font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
     .grid-view .filesize { font-size: 0.8em; color: var(--text-light); }
     .grid-view .checkbox { position: absolute; bottom: 5px; left: 5px; z-index: 5; opacity: 0; transition: opacity .2s ease-in-out; }
     .grid-view .file-item:hover .checkbox, .grid-view .file-item.selected .checkbox { opacity: 1; }
@@ -369,69 +330,61 @@ export default {
     #lightbox img { max-width: 90%; max-height: 90%; object-fit: contain; }
     .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: #fff; border: none; font-size: 2em; padding: 10px 15px; cursor: pointer; border-radius: 8px; }
     #lightbox-prev { left: 20px; } #lightbox-next { right: 20px; } #lightbox-close { top: 20px; right: 20px; transform: none; font-size: 1.5em; }
-    .theme-toggle { 
-      position: fixed; 
-      bottom: 25px; 
-      right: 25px; 
-      padding: 8px 12px; background-color: var(--card-bg); border: 1px solid var(--border-color); 
-      border-radius: 20px; cursor: pointer; z-index: 1001; font-size: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
+    .theme-toggle { position: fixed; bottom: 25px; right: 25px; padding: 8px 12px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; z-index: 1001; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .theme-toggle:hover { background-color: var(--c-primary); color: #fff; }
     .list-view .file-actions { position: static; margin-left: auto; padding-left: 10px; }
     .list-view .menu-button { width: 20px; height: 20px; font-size: 14px; }
     .list-view .menu-items { bottom: auto; top: 30px; right: 0; }
     .grid-view .file-actions { position: absolute; bottom: 5px; right: 5px; z-index: 10; opacity: 0; transition: opacity 0.2s ease-in-out; }
     .grid-view .file-item:hover .file-actions, .grid-view .file-item.selected .file-actions { opacity: 1; }
+    .menu-button-wrapper { position: relative; }
     .menu-button { width: 20px; height: 20px; background-color: var(--card-bg); border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; opacity: 0.7; transition: opacity 0.3s; }
     .menu-button:hover { opacity: 1; background-color: var(--c-primary); color: white; }
     .menu-button::after { content: "⋮"; font-size: 16px; font-weight: bold; }
-    .menu-items { position: absolute; bottom: 30px; right: 0; background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 20; width: 120px; overflow: hidden; display: none; }
+    .menu-items { position: absolute; background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 20; width: max-content; min-width: 120px; overflow: hidden; display: none; }
+    .actions .menu-items { right: 0; top: 42px; }
     .menu-items.show { display: block; }
-    .menu-item { padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; }
+    .menu-item { padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap;}
     .menu-item:hover { background-color: var(--c-primary); color: white; }
+    .menu-item.disabled { color: var(--text-light); background-color: transparent; cursor: not-allowed; }
+    .menu-item.danger:hover { background-color: var(--c-error); color: white; }
     .dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; width: 90%; max-width: 400px; box-sizing: border-box; }
     .dialog.show { display: block; }
     .dialog h3 { margin-top: 0; color: var(--text-color); }
     .dialog input, .dialog select { width: 100%; box-sizing: border-box; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--text-color); }
     .dialog-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+    /* --- Responsive Styles --- */
+    .desktop-only, #bulk-actions-container { display: flex; }
+    .mobile-only { display: none; }
     @media (min-width: 768px) {
-      .login-box {
-        max-width: 420px;
-        padding: 50px;
-      }
+      .login-box { max-width: 420px; padding: 50px; }
       .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+      .actions .desktop-only, #bulk-actions-container { gap: 10px; align-items: center; }
     }
     @media (max-width: 767px) {
-      .page-header { flex-direction: row; align-items: center; padding: 0 20px; }
-      .page-header .logo { font-size: 2.2em; }
+      .desktop-only { display: none !important; }
+      .mobile-only { display: block; }
+      .page-header { flex-direction: row; align-items: center; padding: 0 15px; }
+      .page-header .logo { font-size: 2em; margin-right: 8px;}
       .page-header .project-name { font-size: 1.1em; }
       .page-footer { font-size: 0.7em; }
       header { flex-direction: column; align-items: flex-start; gap: 20px; }
-      .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
+      .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;}
+      .actions button, .actions .menu-button-wrapper button, .actions .sort-button-group button { height: 34px; padding: 0 10px; font-size: 13px; line-height: 1; white-space: nowrap;}
+      #view-toggle-button, .sort-button-group button:last-child { width: 34px; padding: 0; }
       .grid-view .info { padding: 10px 5px; }
       .grid-view .filename { font-size: 0.8em; }
-      .grid-view .filesize { font-size: 0.7em; }
       .list-view .file-item { padding: 8px; }
       .list-view .filename { font-size: 0.9em; }
-      .list-view .filesize { font-size: 0.8em; }
-      .actions button, #view-toggle-button { padding: 8px 10px; font-size: 0.9em; }
-      .dialog {
-          width: auto;
-          min-width: 280px;
-          max-width: 90%;
-      }
-       .theme-toggle {
-        top: 20px;
-        right: 20px;
-        bottom: auto;
-        left: auto;
-        padding: 6px 10px;
-        font-size: 14px;
-      }
+      .dialog { width: auto; min-width: 280px; max-width: 90%; }
+      .theme-toggle { top: 20px; right: 15px; bottom: auto; left: auto; padding: 6px 10px; font-size: 14px; }
     }
-    @media (max-width: 480px) {
+    @media (max-width: 420px) {
+      .actions { gap: 5px; }
+      .actions button, .actions .menu-button-wrapper button, .actions .sort-button-group button { padding: 0 8px; font-size: 12px; }
+      #view-toggle-button, .sort-button-group button:last-child { width: 32px; }
       .grid-view .icon { height: 100px; }
+      .grid-view .filename { font-size: 0.75em; }
       .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
       .login-box { padding: 25px; }
     }
@@ -451,16 +404,15 @@ export default {
   <div class="dialog" id="rename-dialog">
     <h3>重命名</h3><input type="text" id="new-filename" placeholder="新名称"><div class="dialog-buttons"><button id="rename-cancel">取消</button><button id="rename-confirm">确认</button></div>
   </div>
-  
   <div class="dialog" id="create-folder-dialog">
     <h3>新建文件夹</h3><input type="text" id="new-folder-name" placeholder="文件夹名称 (不能包含'/')"><div class="dialog-buttons"><button id="create-folder-cancel">取消</button><button id="create-folder-confirm">确认</button></div>
   </div>
-  
   <div class="dialog" id="move-dialog">
     <h3>移动项目</h3><p id="move-item-name" style="word-break: break-all; font-size: 0.9em; color: var(--text-light);"></p><label for="folder-destination">选择目标文件夹:</label><select id="folder-destination"></select><div class="dialog-buttons"><button id="move-cancel">取消</button><button id="move-confirm">确认</button></div>
   </div>
 
   <svg class="hidden"><defs>
+    <symbol id="icon-search" viewBox="0 0 24 24"><path fill="currentColor" d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5l-1.5 1.5l-5-5v-.79l-.27-.27A6.5 6.5 0 0 1 9.5 16A6.5 6.5 0 0 1 3 9.5A6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14S14 12 14 9.5S12 5 9.5 5Z"/></symbol>
     <symbol id="icon-grid-view" viewBox="0 0 24 24"><path fill="currentColor" d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 13h8v-8h-8v8z"/></symbol>
     <symbol id="icon-list-view" viewBox="0 0 24 24"><path fill="currentColor" d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></symbol>
     <symbol id="icon-folder" viewBox="0 0 24 24"><path fill="currentColor" d="M10 4H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8c0-1.11-.89-2-2-2h-8l-2-2z"/></symbol>
@@ -492,68 +444,79 @@ export default {
     <header>
       <h1>文件列表</h1>
       <div class="actions">
+        <!-- Common Buttons -->
         <button id="view-toggle-button" title="切换视图"></button>
+        <div class="sort-button-group">
+            <button id="sort-by-button"></button>
+            <button id="sort-direction-button"></button>
+        </div>
         <button id="create-folder-button">新建文件夹</button>
-        <button id="sort-by-button"></button>
-        <button id="sort-direction-button"></button>
-        <button id="select-all-button">全选</button>
-        <button id="move-selected-button" class="hidden">移动选中</button>
-        <button id="delete-button" class="hidden">删除选中</button>
+        
+        <!-- Desktop Buttons -->
+        <div class="desktop-only">
+          <button id="select-all-button">全选</button>
+          <div id="bulk-actions-container" class="hidden">
+              <button id="delete-button">删除选中</button>
+              <button id="move-selected-button">移动选中</button>
+              <button id="deselect-all-button">取消全选</button>
+          </div>
+        </div>
+
+        <!-- Mobile "Select All" Menu -->
+        <div class="mobile-only menu-button-wrapper">
+          <button id="mobile-select-menu-trigger">全选</button>
+          <div id="mobile-select-menu" class="menu-items">
+            <div class="menu-item disabled" data-action="move-selected">移动选中</div>
+            <div class="menu-item disabled danger" data-action="delete-selected">删除选中</div>
+          </div>
+        </div>
+        
         <button id="logout-button">登出</button>
       </div>
     </header>
     <div id="breadcrumb"></div>
-    <input type="search" id="search-input" placeholder="搜索当前文件夹...">
-    <input type="file" id="file-input" multiple class="hidden"><div class="uploader" id="drop-zone"><p>拖拽文件到此处，或点击上传</p></div>
+    <div class="search-wrapper">
+        <svg><use xlink:href="#icon-search"></use></svg>
+        <input type="search" id="search-input" placeholder="搜索当前文件夹...">
+    </div>
+    <input type="file" id="file-input" multiple class="hidden">
+    <div class="uploader" id="drop-zone"><p>拖拽文件到此处，或点击上传</p></div>
     <div id="file-container"></div>
   </div>
 
-  <div id="lightbox" class="hidden">
-    <button id="lightbox-close" class="lightbox-nav">&times;</button><button id="lightbox-prev" class="lightbox-nav">&#10094;</button><button id="lightbox-next" class="lightbox-nav">&#10095;</button><img id="lightbox-image" src="" alt="Image preview">
-  </div>
-  
+  <div id="lightbox" class="hidden"><button id="lightbox-close" class="lightbox-nav">&times;</button><button id="lightbox-prev" class="lightbox-nav">&#10094;</button><button id="lightbox-next" class="lightbox-nav">&#10095;</button><img id="lightbox-image" src="" alt="Image preview"></div>
   <div id="video-player" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 5000;">
     <button id="video-close" style="position: absolute; top: 20px; right: 20px; color: #fff; background: transparent; border: none; font-size: 2em; cursor: pointer; z-index: 5001;">&times;</button>
     <video id="video-element" controls style="max-width: 90%; max-height: 90%;" src=""></video>
   </div>
-  
+
   <footer class="page-footer hidden">
     Copyright © 2025 <a href="https://github.com/6otho/Cloudflare-for-R2" target="_blank" rel="noopener noreferrer">CLOUDFLARE-R2</a> . All Rights Reserved.
   </footer>
 
 <script>
-// The entire JavaScript logic remains the same as the previous correct version.
-// All functionality is preserved.
 document.addEventListener('DOMContentLoaded', () => {
   const G = {
-    // ... (rest of the G object is the same, just adding new elements)
     loginView: document.getElementById('login-view'), appView: document.getElementById('app-view'), fileContainer: document.getElementById('file-container'),
     loginButton: document.getElementById('login-button'), deleteButton: document.getElementById('delete-button'), viewToggleButton: document.getElementById('view-toggle-button'), selectAllButton: document.getElementById('select-all-button'),
-    moveSelectedButton: document.getElementById('move-selected-button'),
-    logoutButton: document.getElementById('logout-button'),
-    passwordInput: document.getElementById('password-input'), fileInput: document.getElementById('file-input'), dropZone: document.getElementById('drop-zone'),
-    lightbox: document.getElementById('lightbox'), lightboxImage: document.getElementById('lightbox-image'), lightboxClose: document.getElementById('lightbox-close'), lightboxPrev: document.getElementById('lightbox-prev'), lightboxNext: document.getElementById('lightbox-next'),
-    themeToggle: document.getElementById('global-theme-toggle'),
-    renameDialog: document.getElementById('rename-dialog'), newFilename: document.getElementById('new-filename'), renameCancel: document.getElementById('rename-cancel'), renameConfirm: document.getElementById('rename-confirm'),
-    createFolderButton: document.getElementById('create-folder-button'), createFolderDialog: document.getElementById('create-folder-dialog'), newFolderName: document.getElementById('new-folder-name'), createFolderCancel: document.getElementById('create-folder-cancel'), createFolderConfirm: document.getElementById('create-folder-confirm'),
-    moveDialog: document.getElementById('move-dialog'), moveItemName: document.getElementById('move-item-name'), folderDestination: document.getElementById('folder-destination'), moveCancel: document.getElementById('move-cancel'), moveConfirm: document.getElementById('move-confirm'),
+    moveSelectedButton: document.getElementById('move-selected-button'), logoutButton: document.getElementById('logout-button'), passwordInput: document.getElementById('password-input'),
+    fileInput: document.getElementById('file-input'), dropZone: document.getElementById('drop-zone'), lightbox: document.getElementById('lightbox'), lightboxImage: document.getElementById('lightbox-image'),
+    lightboxClose: document.getElementById('lightbox-close'), lightboxPrev: document.getElementById('lightbox-prev'), lightboxNext: document.getElementById('lightbox-next'),
+    themeToggle: document.getElementById('global-theme-toggle'), renameDialog: document.getElementById('rename-dialog'), newFilename: document.getElementById('new-filename'),
+    renameCancel: document.getElementById('rename-cancel'), renameConfirm: document.getElementById('rename-confirm'), createFolderButton: document.getElementById('create-folder-button'),
+    createFolderDialog: document.getElementById('create-folder-dialog'), newFolderName: document.getElementById('new-folder-name'), createFolderCancel: document.getElementById('create-folder-cancel'),
+    createFolderConfirm: document.getElementById('create-folder-confirm'), moveDialog: document.getElementById('move-dialog'), moveItemName: document.getElementById('move-item-name'),
+    folderDestination: document.getElementById('folder-destination'), moveCancel: document.getElementById('move-cancel'), moveConfirm: document.getElementById('move-confirm'),
     videoPlayer: document.getElementById('video-player'), videoElement: document.getElementById('video-element'), videoClose: document.getElementById('video-close'),
-    breadcrumb: document.getElementById('breadcrumb'),
-    pageHeader: document.querySelector('.page-header'),
-    pageFooter: document.querySelector('.page-footer'),
-    searchInput: document.getElementById('search-input'),
-    sortByButton: document.getElementById('sort-by-button'),
-    sortDirectionButton: document.getElementById('sort-direction-button'),
-    password: '', files: [], imageFiles: [], currentImageIndex: -1,
-    theme: localStorage.getItem('theme') || 'dark', viewMode: localStorage.getItem('viewMode') || 'grid',
-    isAllSelected: false, currentFileKey: null, currentMenu: null,
-    currentPath: '',
-    keysToMove: [],
-    searchTerm: '',
-    sortBy: 'uploaded',
-    sortDirection: 'desc',
-    sortCycle: ['uploaded', 'name', 'size'],
-    sortDisplayNames: { uploaded: '上传时间', name: '名称', size: '大小' },
+    breadcrumb: document.getElementById('breadcrumb'), pageHeader: document.querySelector('.page-header'), pageFooter: document.querySelector('.page-footer'),
+    searchInput: document.getElementById('search-input'), sortByButton: document.getElementById('sort-by-button'), sortDirectionButton: document.getElementById('sort-direction-button'),
+    mobileSelectMenuTrigger: document.getElementById('mobile-select-menu-trigger'),
+    mobileSelectMenu: document.getElementById('mobile-select-menu'),
+    bulkActionsContainer: document.getElementById('bulk-actions-container'),
+    deselectAllButton: document.getElementById('deselect-all-button'),
+    password: '', files: [], imageFiles: [], currentImageIndex: -1, theme: localStorage.getItem('theme') || 'dark', viewMode: localStorage.getItem('viewMode') || 'grid',
+    isAllSelected: false, currentFileKey: null, currentMenu: null, currentPath: '', keysToMove: [], searchTerm: '', sortBy: 'uploaded', sortDirection: 'desc',
+    sortCycle: ['uploaded', 'name', 'size'], sortDisplayNames: { uploaded: '上传时间', name: '名称', size: '大小' },
   };
 
   const showToast = (message, duration = 3000) => {
@@ -564,8 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
       Object.assign(toast.style, { position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'var(--c-accent)', color: '#fff', padding: '10px 20px', borderRadius: '8px', zIndex: '9999', opacity: '0', transition: 'opacity 0.3s' });
       document.body.appendChild(toast);
     }
-    toast.textContent = message;
-    toast.style.opacity = '1';
+    toast.textContent = message; toast.style.opacity = '1';
     setTimeout(() => { toast.style.opacity = '0'; }, duration);
   };
   
@@ -580,400 +542,150 @@ document.addEventListener('DOMContentLoaded', () => {
     return '#icon-file';
   };
   
-  const generateVideoThumbnail = (key) => {
-    return new Promise((resolve, reject) => {
-        const video = document.createElement('video');
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        let resolved = false;
-        video.crossOrigin = "anonymous";
-        video.src = \`/\${encodeURIComponent(key)}\`;
-        video.currentTime = 1;
-        const timeoutId = setTimeout(() => {
-            if (!resolved) { cleanup(); reject(new Error('Thumbnail generation timed out')); }
-        }, 5000);
-        const cleanup = () => {
-            video.removeEventListener('seeked', onSeeked);
-            video.removeEventListener('error', onError);
-            video.src = ''; clearTimeout(timeoutId);
-        };
-        const onSeeked = () => {
-            if (resolved) return;
-            resolved = true;
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            cleanup(); resolve(dataUrl);
-        };
-        const onError = (e) => {
-            if (resolved) return;
-            resolved = true; cleanup(); reject(new Error('Failed to load video.'));
-        };
-        video.addEventListener('seeked', onSeeked, { once: true });
-        video.addEventListener('error', onError, { once: true });
-    });
-  };
-
+  const generateVideoThumbnail = (key) => new Promise((resolve, reject) => { const video = document.createElement('video'); const canvas = document.createElement('canvas'); const context = canvas.getContext('2d'); let resolved = false; video.crossOrigin = "anonymous"; video.src = \`/\${encodeURIComponent(key)}\`; video.currentTime = 1; const timeoutId = setTimeout(() => { if (!resolved) { cleanup(); reject(new Error('Thumbnail generation timed out')); } }, 5000); const cleanup = () => { video.removeEventListener('seeked', onSeeked); video.removeEventListener('error', onError); video.src = ''; clearTimeout(timeoutId); }; const onSeeked = () => { if (resolved) return; resolved = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; context.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.8); cleanup(); resolve(dataUrl); }; const onError = (e) => { if (resolved) return; resolved = true; cleanup(); reject(new Error('Failed to load video.')); }; video.addEventListener('seeked', onSeeked, { once: true }); video.addEventListener('error', onError, { once: true }); });
   const formatBytes = (bytes, d=2) => { if(!+bytes)return"0 Bytes";const i=Math.floor(Math.log(bytes)/Math.log(1024)); return \`\${parseFloat((bytes/Math.pow(1024,i)).toFixed(d))} \${"Bytes,KB,MB,GB,TB"[i]}\` };
   const apiCall = async (endpoint, options = {}) => { const headers = { 'x-auth-password': G.password, ...options.headers }; const response = await fetch(endpoint, { ...options, headers }); if (!response.ok) throw new Error(await response.text() || \`HTTP error! \${response.status}\`); return response; };
   const applyTheme = () => { document.documentElement.setAttribute('data-theme', G.theme); const sun = G.themeToggle.querySelector('.sun'); const moon = G.themeToggle.querySelector('.moon'); if (G.theme === 'dark') { sun.classList.add('hidden'); moon.classList.remove('hidden'); } else { sun.classList.remove('hidden'); moon.classList.add('hidden'); } };
   const toggleTheme = () => { G.theme = G.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', G.theme); applyTheme(); };
-  const applyViewMode = () => { G.fileContainer.className = \`file-container \${G.viewMode}-view\`; G.viewToggleButton.innerHTML = G.viewMode === 'grid' ? '<svg><use xlink:href="#icon-list-view"></use></svg>' : '<svg><use xlink:href="#icon-grid-view"></use></svg>'; renderFiles(); };
+  const applyViewMode = () => { 
+    G.fileContainer.className = \`file-container \${G.viewMode}-view\`; 
+    G.viewToggleButton.innerHTML = G.viewMode === 'grid' ? '<svg><use xlink:href="#icon-grid-view"></use></svg>' : '<svg><use xlink:href="#icon-list-view"></use></svg>'; 
+    renderFiles(); 
+  };
   const toggleViewMode = () => { G.viewMode = G.viewMode === 'grid' ? 'list' : 'grid'; localStorage.setItem('viewMode', G.viewMode); applyViewMode(); };
-  const openLightbox = (index) => { G.currentImageIndex = index; G.lightboxImage.src = encodeURIComponent(G.imageFiles[G.currentImageIndex].key); G.lightbox.classList.remove('hidden'); document.body.style.overflow = 'hidden'; };
+  const openLightbox = (index) => { G.currentImageIndex = index; G.lightboxImage.src = \`/\${encodeURIComponent(G.imageFiles[G.currentImageIndex].key)}\`; G.lightbox.classList.remove('hidden'); document.body.style.overflow = 'hidden'; };
   const closeLightbox = () => { G.lightbox.classList.add('hidden'); document.body.style.overflow = 'auto'; };
   const showNextImage = () => openLightbox((G.currentImageIndex + 1) % G.imageFiles.length);
   const showPrevImage = () => openLightbox((G.currentImageIndex - 1 + G.imageFiles.length) % G.imageFiles.length);
   
   const getFolderList = () => {
     const folderSet = new Set(['']);
-    G.files.forEach(file => {
-        if (file.key.endsWith('/')) { folderSet.add(file.key); } 
-        else if (file.key.includes('/')) { folderSet.add(file.key.substring(0, file.key.lastIndexOf('/') + 1)); }
-    });
+    G.files.forEach(file => { if (file.key.endsWith('/')) { folderSet.add(file.key); } else if (file.key.includes('/')) { folderSet.add(file.key.substring(0, file.key.lastIndexOf('/') + 1)); } });
     return Array.from(folderSet).sort();
   };
   
   const renderBreadcrumb = () => {
-    let html = '<a href="#" data-path="">根目录</a>';
-    let current = '';
-    if (G.currentPath) {
-        const parts = G.currentPath.slice(0, -1).split('/');
-        for (const part of parts) {
-            current += part + '/';
-            html += \`<span> / </span><a href="#" data-path="\${current}">\${part}</a>\`;
-        }
-    }
+    let html = '<a href="#" data-path="">根目录</a>'; let current = '';
+    if (G.currentPath) { const parts = G.currentPath.slice(0, -1).split('/'); for (const part of parts) { current += part + '/'; html += \`<span> / </span><a href="#" data-path="\${current}">\${part}</a>\`; } }
     G.breadcrumb.innerHTML = html;
   };
-  
-  const updateActionButtonsVisibility = () => {
+
+  const updateBulkActionsState = () => {
     const selectedCount = document.querySelectorAll('.checkbox:checked').length;
-    const show = selectedCount > 0;
-    G.deleteButton.classList.toggle('hidden', !show);
-    G.moveSelectedButton.classList.toggle('hidden', !show);
+    const isAnythingSelected = selectedCount > 0;
+
+    // Desktop buttons
+    G.selectAllButton.classList.toggle('hidden', isAnythingSelected);
+    G.bulkActionsContainer.classList.toggle('hidden', !isAnythingSelected);
+
+    // Mobile menu items and trigger
+    const buttonText = isAnythingSelected ? '取消全选' : '全选';
+    G.mobileSelectMenuTrigger.textContent = buttonText;
+
+    const moveItem = G.mobileSelectMenu.querySelector('[data-action="move-selected"]');
+    const deleteItem = G.mobileSelectMenu.querySelector('[data-action="delete-selected"]');
+    moveItem.classList.toggle('disabled', !isAnythingSelected);
+    deleteItem.classList.toggle('disabled', !isAnythingSelected);
+    if (!isAnythingSelected) {
+      G.mobileSelectMenu.classList.remove('show');
+    }
   };
   
   const updateSortUI = () => {
     G.sortByButton.textContent = G.sortDisplayNames[G.sortBy];
     const icon = G.sortDirection === 'asc' ? '#icon-arrow-up' : '#icon-arrow-down';
-    G.sortDirectionButton.innerHTML = \`<svg width="16" height="16" style="vertical-align: middle;"><use xlink:href="\${icon}"></use></svg>\`;
+    G.sortDirectionButton.innerHTML = \`<svg><use xlink:href="\${icon}"></use></svg>\`;
   };
 
   const renderFiles = () => {
-    G.fileContainer.innerHTML = '';
-    renderBreadcrumb();
-    
+    G.fileContainer.innerHTML = ''; renderBreadcrumb();
     let itemsInCurrentPath = []; const foldersInCurrentPath = new Set();
-    
-    G.files.forEach(file => {
-        if (file.key.startsWith(G.currentPath)) {
-            const relativePath = file.key.substring(G.currentPath.length);
-            if (relativePath === '') return;
-            const parts = relativePath.split('/');
-            if (parts.length === 1) { if (relativePath !== '') itemsInCurrentPath.push(file); } 
-            else {
-                const folderName = parts[0] + '/';
-                if (!foldersInCurrentPath.has(folderName)) {
-                    foldersInCurrentPath.add(folderName);
-                    itemsInCurrentPath.push({ key: G.currentPath + folderName, size: 0, uploaded: file.uploaded });
-                }
-            }
-        }
-    });
-    
-    if (G.searchTerm) {
-        const lowerCaseSearch = G.searchTerm.toLowerCase();
-        itemsInCurrentPath = itemsInCurrentPath.filter(file => file.key.toLowerCase().includes(lowerCaseSearch));
-    }
-
-    if (G.currentPath !== '' && !G.searchTerm) {
-      const parentPath = G.currentPath.substring(0, G.currentPath.lastIndexOf('/', G.currentPath.length - 2) + 1);
-      itemsInCurrentPath.unshift({ key: '..', isNav: true, path: parentPath });
-    }
-
+    G.files.forEach(file => { if (file.key.startsWith(G.currentPath)) { const relativePath = file.key.substring(G.currentPath.length); if (relativePath === '') return; const parts = relativePath.split('/'); if (parts.length === 1) { if (relativePath !== '') itemsInCurrentPath.push(file); } else { const folderName = parts[0] + '/'; if (!foldersInCurrentPath.has(folderName)) { foldersInCurrentPath.add(folderName); itemsInCurrentPath.push({ key: G.currentPath + folderName, size: 0, uploaded: file.uploaded }); } } } });
+    if (G.searchTerm) { const lowerCaseSearch = G.searchTerm.toLowerCase(); itemsInCurrentPath = itemsInCurrentPath.filter(file => file.key.toLowerCase().includes(lowerCaseSearch)); }
+    if (G.currentPath !== '' && !G.searchTerm) { const parentPath = G.currentPath.substring(0, G.currentPath.lastIndexOf('/', G.currentPath.length - 2) + 1); itemsInCurrentPath.unshift({ key: '..', isNav: true, path: parentPath }); }
     if (itemsInCurrentPath.length === 0) { G.fileContainer.innerHTML = \`<p style="text-align:center;color:var(--text-light);">\${G.searchTerm ? '未找到匹配项' : '此文件夹为空'}。</p>\`; updateSortUI(); return; }
-    
     G.imageFiles = itemsInCurrentPath.filter(f => !f.isNav && getFileIcon(f.key) === 'image');
-    
-    const sortedItems = itemsInCurrentPath.sort((a, b) => {
-        if (a.isNav) return -1; if (b.isNav) return 1;
-
-        const aIsFolder = a.key.endsWith('/');
-        const bIsFolder = b.key.endsWith('/');
-        if (aIsFolder && !bIsFolder) return -1;
-        if (!aIsFolder && bIsFolder) return 1;
-
-        let comparison = 0;
-        if (G.sortBy === 'uploaded') {
-            const dateA = a.uploaded ? new Date(a.uploaded) : new Date(0);
-            const dateB = b.uploaded ? new Date(b.uploaded) : new Date(0);
-            comparison = dateA - dateB;
-        } else if (G.sortBy === 'name') {
-            comparison = a.key.localeCompare(b.key);
-        } else if (G.sortBy === 'size') {
-            comparison = a.size - b.size;
-        }
-
-        return G.sortDirection === 'asc' ? comparison : -comparison;
-    });
-
+    const sortedItems = itemsInCurrentPath.sort((a, b) => { if (a.isNav) return -1; if (b.isNav) return 1; const aIsFolder = a.key.endsWith('/'); const bIsFolder = b.key.endsWith('/'); if (aIsFolder && !bIsFolder) return -1; if (!aIsFolder && bIsFolder) return 1; let comparison = 0; if (G.sortBy === 'uploaded') { const dateA = a.uploaded ? new Date(a.uploaded) : new Date(0); const dateB = b.uploaded ? new Date(b.uploaded) : new Date(0); comparison = dateA - dateB; } else if (G.sortBy === 'name') { comparison = a.key.localeCompare(b.key); } else if (G.sortBy === 'size') { comparison = a.size - b.size; } return G.sortDirection === 'asc' ? comparison : -comparison; });
     sortedItems.forEach(file => {
       const isNavUp = file.isNav && file.key === '..';
       const displayName = isNavUp ? ".." : file.key.substring(G.currentPath.length);
-      
       const fileTypeIdentifier = isNavUp ? '#icon-folder' : getFileIcon(file.key);
       const isFolder = file.key.endsWith('/') || isNavUp;
-      
-      const item = document.createElement('div');
-      item.className = 'file-item';
-      item.dataset.key = file.key;
-      if (isNavUp) item.dataset.path = file.path;
-
+      const item = document.createElement('div'); item.className = 'file-item'; item.dataset.key = file.key; if (isNavUp) item.dataset.path = file.path;
       let iconHTML = '';
-      
-      if (G.viewMode === 'grid' && fileTypeIdentifier === 'image') {
-        iconHTML = \`<img src="/\${encodeURIComponent(file.key)}" alt="\${displayName}" loading="lazy">\`;
-      } else if (G.viewMode === 'grid' && fileTypeIdentifier === 'video') {
-        iconHTML = \`<img class="video-thumbnail-placeholder" data-video-key="\${file.key}" alt="\${displayName}">\`;
-      } else {
-        let symbolId;
-        switch (fileTypeIdentifier) {
-          case 'image': symbolId = '#icon-file'; break;
-          case 'video': symbolId = '#icon-video'; break;
-          default: symbolId = fileTypeIdentifier;
-        }
-        iconHTML = \`<svg><use xlink:href="\${symbolId}"></use></svg>\`;
-      }
-      
-      const actionsHTML = isNavUp ? '' : \`
-        <div class="file-actions">
-          <div class="menu-button" data-key="\${file.key}"></div>
-          <div class="menu-items" data-key="\${file.key}">
-            <div class="menu-item" data-action="rename">重命名</div>
-            \${!isFolder ? '<div class="menu-item" data-action="download">下载</div>' : ''}
-            <div class="menu-item" data-action="move">移动</div>
-            \${!isFolder ? '<div class="menu-item" data-action="copy-link">复制链接</div>' : ''}
-            <div class="menu-item" data-action="delete" style="color: var(--c-error);">删除</div>
-          </div>
-        </div>\`;
-        
+      if (G.viewMode === 'grid' && fileTypeIdentifier === 'image') { iconHTML = \`<img src="/\${encodeURIComponent(file.key)}" alt="\${displayName}" loading="lazy">\`; } else if (G.viewMode === 'grid' && fileTypeIdentifier === 'video') { iconHTML = \`<img class="video-thumbnail-placeholder" data-video-key="\${file.key}" alt="\${displayName}">\`; } else { let symbolId; switch (fileTypeIdentifier) { case 'image': symbolId = '#icon-file'; break; case 'video': symbolId = '#icon-video'; break; default: symbolId = fileTypeIdentifier; } iconHTML = \`<svg><use xlink:href="\${symbolId}"></use></svg>\`; }
+      const actionsHTML = isNavUp ? '' : \` <div class="file-actions"> <div class="menu-button" data-key="\${file.key}"></div> <div class="menu-items" data-key="\${file.key}"> <div class="menu-item" data-action="rename">重命名</div> \${!isFolder ? '<div class="menu-item" data-action="download">下载</div>' : ''} <div class="menu-item" data-action="move">移动</div> \${!isFolder ? '<div class="menu-item" data-action="copy-link">复制链接</div>' : ''} <div class="menu-item danger" data-action="delete" style="color: var(--c-error);">删除</div> </div> </div>\`;
       const checkboxHTML = isNavUp ? '' : \`<input type="checkbox" class="checkbox" data-key="\${file.key}">\`;
-
-      if (G.viewMode === 'grid') {
-        item.innerHTML = \`
-          <div class="icon">\${iconHTML}</div>
-          <div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>
-          \${checkboxHTML}\${actionsHTML}\`;
-      } else {
-        item.innerHTML = \`
-          \${checkboxHTML}
-          <div class="icon">\${iconHTML}</div>
-          <div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>
-          \${actionsHTML}\`;
-      }
+      if (G.viewMode === 'grid') { item.innerHTML = \`<div class="icon">\${iconHTML}</div><div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>\${checkboxHTML}\${actionsHTML}\`; } else { item.innerHTML = \`\${checkboxHTML}<div class="icon">\${iconHTML}</div><div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>\${actionsHTML}\`; }
       G.fileContainer.appendChild(item);
     });
-    
-    if (G.viewMode === 'grid') {
-        document.querySelectorAll('.video-thumbnail-placeholder').forEach(imgPlaceholder => {
-            const key = imgPlaceholder.dataset.videoKey;
-            generateVideoThumbnail(key)
-                .then(thumbSrc => { imgPlaceholder.src = thumbSrc; })
-                .catch(err => {
-                    console.error(\`Failed to generate thumbnail for \${key}:\`, err);
-                    const iconContainer = imgPlaceholder.parentElement;
-                    if(iconContainer) {
-                        iconContainer.innerHTML = '<svg><use xlink:href="#icon-video"></use></svg>';
-                    }
-                });
-        });
-    }
+    if (G.viewMode === 'grid') { document.querySelectorAll('.video-thumbnail-placeholder').forEach(imgPlaceholder => { const key = imgPlaceholder.dataset.videoKey; generateVideoThumbnail(key) .then(thumbSrc => { imgPlaceholder.src = thumbSrc; }) .catch(err => { console.error(\`Failed to generate thumbnail for \${key}:\`, err); const iconContainer = imgPlaceholder.parentElement; if(iconContainer) { iconContainer.innerHTML = '<svg><use xlink:href="#icon-video"></use></svg>'; } }); }); }
     updateSortUI();
   };
 
-  const handleFileAction = (action, key) => {
-    G.currentFileKey = key;
-    G.keysToMove = [];
-    switch(action) {
-      case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break;
-      case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break;
-      case 'move':
-        const folders = getFolderList();
-        G.folderDestination.innerHTML = '';
-        folders.forEach(folder => {
-            const option = document.createElement('option');
-            option.value = folder;
-            option.textContent = folder === '' ? '(根目录)' : folder;
-            G.folderDestination.appendChild(option);
-        });
-        G.moveItemName.textContent = \`移动: \${key}\`;
-        G.moveDialog.classList.add('show');
-        break;
-      case 'copy-link': navigator.clipboard.writeText(\`\${window.location.origin}/\${encodeURIComponent(key)}\`).then(() => showToast('链接已复制')).catch(err => showToast('复制失败: ' + err)); break;
-      case 'delete': if (confirm(\`确定删除 "\${key}" 吗？\`)) { handleDelete([key]); } break;
-    }
-  };
-  
-  const moveOrRenameFile = async (oldKey, newKey) => {
-      if (!newKey || newKey === oldKey) { return; }
-      await apiCall('/api/move', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ oldKey, newKey }) 
-      });
-  };
-
-  const handleRename = async () => {
-      const oldKey = G.currentFileKey;
-      const newName = G.newFilename.value.trim();
-      G.renameDialog.classList.remove('show');
-      if (!newName) return;
-      
-      const isFolder = oldKey.endsWith('/');
-      const newKey = G.currentPath + newName + (isFolder ? '/' : '');
-
-      try {
-          await moveOrRenameFile(oldKey, newKey);
-          showToast(\`操作成功: "\${newKey}"\`);
-          await refreshFileList();
-      } catch(error) {
-          showToast(\`操作失败: \${error.message}\`);
-      }
-  };
-  
-  const handleMove = async () => {
-    const oldKey = G.currentFileKey;
-    if (!oldKey) return;
-    const destination = G.folderDestination.value;
-    G.moveDialog.classList.remove('show');
-
-    const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
-    const newKey = destination + filename;
-
-    try {
-      await moveOrRenameFile(oldKey, newKey);
-      showToast(\`成功移动到: "\${newKey}"\`);
-      await refreshFileList();
-    } catch (error) {
-      showToast(\`移动失败: \${error.message}\`);
-    }
-  };
-  
+  const handleFileAction = (action, key) => { G.currentFileKey = key; G.keysToMove = []; switch(action) { case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break; case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break; case 'move': const folders = getFolderList(); G.folderDestination.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); }); G.moveItemName.textContent = \`移动: \${key}\`; G.moveDialog.classList.add('show'); break; case 'copy-link': navigator.clipboard.writeText(\`\${window.location.origin}/\${encodeURIComponent(key)}\`).then(() => showToast('链接已复制')).catch(err => showToast('复制失败: ' + err)); break; case 'delete': if (confirm(\`确定删除 "\${key}" 吗？\`)) { handleDelete([key]); } break; } };
+  const moveOrRenameFile = async (oldKey, newKey) => { if (!newKey || newKey === oldKey) { return; } await apiCall('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldKey, newKey }) }); };
+  const handleRename = async () => { const oldKey = G.currentFileKey; const newName = G.newFilename.value.trim(); G.renameDialog.classList.remove('show'); if (!newName) return; const isFolder = oldKey.endsWith('/'); const newKey = G.currentPath + newName + (isFolder ? '/' : ''); try { await moveOrRenameFile(oldKey, newKey); showToast(\`操作成功: "\${newKey}"\`); await refreshFileList(); } catch(error) { showToast(\`操作失败: \${error.message}\`); } };
+  const handleMove = async () => { const oldKey = G.currentFileKey; if (!oldKey) return; const destination = G.folderDestination.value; G.moveDialog.classList.remove('show'); const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop(); const newKey = destination + filename; try { await moveOrRenameFile(oldKey, newKey); showToast(\`成功移动到: "\${newKey}"\`); await refreshFileList(); } catch (error) { showToast(\`移动失败: \${error.message}\`); } };
   const handleCreateFolder = async () => {
     let folderName = G.newFolderName.value.trim();
     G.createFolderDialog.classList.remove('show');
-    if (!folderName || folderName.includes('/')) {
-        showToast('创建失败: 文件夹名称无效。'); return;
-    }
-    
+    if (!folderName || folderName.includes('/')) { showToast('创建失败: 文件夹名称无效。'); return; }
     folderName = G.currentPath + folderName; 
-
     const selectedKeys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
-
     try {
       await apiCall('/api/create-folder', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ folderName }) });
-      
       const destinationFolder = \`\${folderName}/\`;
-
       if (selectedKeys.length > 0) {
         showToast(\`文件夹 "\${destinationFolder}" 创建成功。正在移动 \${selectedKeys.length} 个项目...\`);
-        const movePromises = selectedKeys.map(oldKey => {
-            const baseName = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
-            const newKey = destinationFolder + baseName;
-            return moveOrRenameFile(oldKey, newKey);
-        });
-        await Promise.all(movePromises);
-        showToast(\`成功移动 \${selectedKeys.length} 个项目到 "\${destinationFolder}"\`);
-      } else {
-        showToast(\`文件夹 "\${destinationFolder}" 创建成功\`);
-      }
-      
-      G.newFolderName.value = '';
-      await refreshFileList();
-    } catch(error) {
-        showToast('操作失败: ' + error.message);
-    }
+        const movePromises = selectedKeys.map(oldKey => { const baseName = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop(); const newKey = destinationFolder + baseName; return moveOrRenameFile(oldKey, newKey); });
+        await Promise.all(movePromises); showToast(\`成功移动 \${selectedKeys.length} 个项目到 "\${destinationFolder}"\`);
+      } else { showToast(\`文件夹 "\${destinationFolder}" 创建成功\`); }
+      G.newFolderName.value = ''; await refreshFileList();
+    } catch(error) { showToast('操作失败: ' + error.message); }
   };
-  
   const handleBulkMove = async () => {
-    const destination = G.folderDestination.value;
-    const keys = G.keysToMove;
-    G.moveDialog.classList.remove('show');
-
+    const destination = G.folderDestination.value; const keys = G.keysToMove; G.moveDialog.classList.remove('show');
     if (!keys || keys.length === 0) return;
-
     showToast(\`正在移动 \${keys.length} 个项目...\`);
-    
     try {
-        const movePromises = keys.map(oldKey => {
-            const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop();
-            const newKey = destination + filename;
-            return moveOrRenameFile(oldKey, newKey);
-        });
-
-        await Promise.all(movePromises);
-        showToast(\`成功移动 \${keys.length} 个项目！\`);
-    } catch (error) {
-        showToast(\`移动失败: \${error.message}\`);
-    } finally {
-        G.keysToMove = [];
-        await refreshFileList();
-    }
+        const movePromises = keys.map(oldKey => { const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop(); const newKey = destination + filename; return moveOrRenameFile(oldKey, newKey); });
+        await Promise.all(movePromises); showToast(\`成功移动 \${keys.length} 个项目！\`);
+    } catch (error) { showToast(\`移动失败: \${error.message}\`); }
+    finally { G.keysToMove = []; await refreshFileList(); }
   };
 
-  const toggleSelectAll = () => {
-    G.isAllSelected = !G.isAllSelected;
-    document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').forEach(checkbox => {
-      checkbox.checked = G.isAllSelected;
-      checkbox.closest('.file-item').classList.toggle('selected', G.isAllSelected);
+  const toggleSelectAll = (forceState) => {
+    G.isAllSelected = (typeof forceState === 'boolean') ? forceState : !G.isAllSelected;
+    document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').forEach(checkbox => { 
+      checkbox.checked = G.isAllSelected; 
+      checkbox.closest('.file-item').classList.toggle('selected', G.isAllSelected); 
     });
-    G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
-    updateActionButtonsVisibility();
+    updateBulkActionsState();
   };
 
   const refreshFileList = async () => {
     try { 
-        const response = await apiCall('/api/list'); 
-        G.files = await response.json(); 
-        G.isAllSelected = false; 
-        G.selectAllButton.textContent = '全选'; 
+        const response = await apiCall('/api/list'); G.files = await response.json(); G.isAllSelected = false; 
         renderFiles(); 
-        updateActionButtonsVisibility();
-    }
-    catch (error) { console.error(error); showToast('刷新列表失败'); }
+        updateBulkActionsState();
+    } catch (error) { console.error(error); showToast('刷新列表失败'); }
   };
   
   const handleLogin = async () => {
-    const pw = G.passwordInput.value; if (!pw) return;
-    G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
+    const pw = G.passwordInput.value; if (!pw) return; G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
     try { 
-      await apiCall('/api/list'); 
-      localStorage.setItem('r2-password', pw);
-      if (G.pageHeader) G.pageHeader.classList.add('hidden');
-      if (G.pageFooter) G.pageFooter.classList.add('hidden');
-      G.loginView.classList.add('hidden'); 
-      G.appView.classList.remove('hidden'); 
-      updateThemeTogglePosition();
-      await refreshFileList(); 
-    }
-    catch (error) { document.getElementById('login-error').textContent = '密码错误'; setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); }
+      await apiCall('/api/list'); localStorage.setItem('r2-password', pw);
+      if (G.pageHeader) G.pageHeader.classList.add('hidden'); if (G.pageFooter) G.pageFooter.classList.add('hidden');
+      G.loginView.classList.add('hidden'); G.appView.classList.remove('hidden'); updateThemeTogglePosition(); await refreshFileList(); 
+    } catch (error) { document.getElementById('login-error').textContent = '密码错误'; setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); }
     finally { G.loginButton.textContent = "授 权 访 问"; G.loginButton.disabled = false; }
   };
 
-  const handleLogout = () => {
-    if (confirm('您确定要登出吗？')) {
-      localStorage.removeItem('r2-password');
-      location.reload();
-    }
-  };
-  
+  const handleLogout = () => { if (confirm('您确定要登出吗？')) { localStorage.removeItem('r2-password'); location.reload(); } };
   const handleUpload = async (files) => {
     showToast(\`开始上传 \${files.length} 个文件...\`);
-    const uploadPromises = Array.from(files).map(file => {
-        const uploadKey = G.currentPath + file.name;
-        return apiCall(\`/api/upload/\${encodeURIComponent(uploadKey)}\`, { method: 'PUT', body: file });
-    });
+    const uploadPromises = Array.from(files).map(file => { const uploadKey = G.currentPath + file.name; return apiCall(\`/api/upload/\${encodeURIComponent(uploadKey)}\`, { method: 'PUT', body: file }); });
     try { await Promise.all(uploadPromises); showToast('所有文件上传成功！'); } catch(error) { showToast(\`上传失败: \${error.message}\`); }
     await refreshFileList();
   };
@@ -982,48 +694,55 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!keys || keys.length === 0) keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
     if (keys.length === 0) { showToast("请先选择要删除的项目"); return; }
     if (!confirm(\`你确定要删除选中的 \${keys.length} 个项目吗？此操作不可恢复。\`)) return;
-    try {
-        await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) });
-        showToast(\`成功删除 \${keys.length} 个项目\`);
-        await refreshFileList();
-    } catch (error) { showToast(\`删除失败: \${error.message}\`); }
+    try { await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) }); showToast(\`成功删除 \${keys.length} 个项目\`); await refreshFileList(); } catch (error) { showToast(\`删除失败: \${error.message}\`); }
   };
 
-  const updateThemeTogglePosition = () => {
-    const isMobile = window.innerWidth <= 767;
-    const isLoginPage = !G.loginView.classList.contains('hidden');
-    G.themeToggle.classList.toggle('top-right', isMobile && isLoginPage);
-  };
+  const updateThemeTogglePosition = () => { const isMobile = window.innerWidth <= 767; const isLoginPage = !G.loginView.classList.contains('hidden'); G.themeToggle.classList.toggle('top-right', isMobile && isLoginPage); };
 
   const setupEventListeners = () => {
     G.themeToggle.addEventListener('click', toggleTheme);
     G.loginButton.addEventListener('click', handleLogin);
     G.logoutButton.addEventListener('click', handleLogout);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
-    G.deleteButton.addEventListener('click', () => handleDelete());
+    
+    // Common button listeners
     G.createFolderButton.addEventListener('click', () => { G.newFolderName.value = ''; G.createFolderDialog.classList.add('show'); });
-    G.selectAllButton.addEventListener('click', toggleSelectAll);
     G.viewToggleButton.addEventListener('click', toggleViewMode);
     
+    // Desktop-specific button listeners
+    G.selectAllButton.addEventListener('click', () => toggleSelectAll(true));
+    G.deselectAllButton.addEventListener('click', () => toggleSelectAll(false));
+    G.deleteButton.addEventListener('click', () => handleDelete());
     G.moveSelectedButton.addEventListener('click', () => {
         const selectedKeys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
-        if (selectedKeys.length === 0) {
-            showToast("请先选择要移动的项目");
-            return;
-        }
-        G.keysToMove = selectedKeys;
-        G.currentFileKey = null;
+        if (selectedKeys.length === 0) { showToast("请先选择要移动的项目"); return; }
+        G.keysToMove = selectedKeys; G.currentFileKey = null;
+        const folders = getFolderList(); G.folderDestination.innerHTML = '';
+        folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); });
+        G.moveItemName.textContent = \`移动 \${G.keysToMove.length} 个项目\`; G.moveDialog.classList.add('show');
+    });
 
-        const folders = getFolderList();
-        G.folderDestination.innerHTML = '';
-        folders.forEach(folder => {
-            const option = document.createElement('option');
-            option.value = folder;
-            option.textContent = folder === '' ? '(根目录)' : folder;
-            G.folderDestination.appendChild(option);
-        });
-        G.moveItemName.textContent = \`移动 \${G.keysToMove.length} 个项目\`;
-        G.moveDialog.classList.add('show');
+    // --- Mobile "Select All" Menu Listeners ---
+    G.mobileSelectMenuTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSelectAll(!G.isAllSelected);
+        if (G.isAllSelected) {
+            G.mobileSelectMenu.classList.add('show');
+        } else {
+            G.mobileSelectMenu.classList.remove('show');
+        }
+    });
+
+    G.mobileSelectMenu.addEventListener('click', (e) => {
+        const target = e.target.closest('.menu-item');
+        if (!target || target.classList.contains('disabled')) return;
+        
+        const action = target.dataset.action;
+        switch(action) {
+            case 'move-selected': G.moveSelectedButton.click(); break;
+            case 'delete-selected': handleDelete(); break; 
+        }
+        G.mobileSelectMenu.classList.remove('show');
     });
 
     G.dropZone.addEventListener('click', () => G.fileInput.click());
@@ -1041,100 +760,34 @@ document.addEventListener('DOMContentLoaded', () => {
     G.createFolderCancel.addEventListener('click', () => G.createFolderDialog.classList.remove('show'));
     G.createFolderConfirm.addEventListener('click', handleCreateFolder);
     G.moveCancel.addEventListener('click', () => G.moveDialog.classList.remove('show'));
-
-    G.moveConfirm.addEventListener('click', () => {
-        if (G.keysToMove.length > 0) {
-            handleBulkMove();
-        } else {
-            handleMove();
-        }
-    });
-    
+    G.moveConfirm.addEventListener('click', () => { if (G.keysToMove.length > 0) { handleBulkMove(); } else { handleMove(); } });
     G.videoClose.addEventListener('click', () => { G.videoPlayer.classList.add('hidden'); G.videoElement.pause(); G.videoElement.src = ''; });
+    G.breadcrumb.addEventListener('click', e => { e.preventDefault(); const target = e.target.closest('a'); if (target && typeof target.dataset.path !== 'undefined') { G.currentPath = target.dataset.path; renderFiles(); } });
+    G.searchInput.addEventListener('input', e => { G.searchTerm = e.target.value; renderFiles(); });
+    G.sortByButton.addEventListener('click', () => { const currentIndex = G.sortCycle.indexOf(G.sortBy); const nextIndex = (currentIndex + 1) % G.sortCycle.length; G.sortBy = G.sortCycle[nextIndex]; renderFiles(); });
+    G.sortDirectionButton.addEventListener('click', () => { G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc'; renderFiles(); });
     
-    G.breadcrumb.addEventListener('click', e => {
-      e.preventDefault();
-      const target = e.target.closest('a');
-      if (target && typeof target.dataset.path !== 'undefined') {
-        G.currentPath = target.dataset.path;
-        renderFiles();
-      }
-    });
-    
-    G.searchInput.addEventListener('input', e => {
-      G.searchTerm = e.target.value;
-      renderFiles();
-    });
-
-    G.sortByButton.addEventListener('click', () => {
-        const currentIndex = G.sortCycle.indexOf(G.sortBy);
-        const nextIndex = (currentIndex + 1) % G.sortCycle.length;
-        G.sortBy = G.sortCycle[nextIndex];
-        renderFiles();
-    });
-
-    G.sortDirectionButton.addEventListener('click', () => {
-        G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc';
-        renderFiles();
-    });
-
     G.fileContainer.addEventListener('click', e => {
-        const target = e.target;
-        const fileItem = target.closest('.file-item');
-        if (!fileItem) return;
-        const key = fileItem.dataset.key;
-        
+        const target = e.target; const fileItem = target.closest('.file-item'); if (!fileItem) return; const key = fileItem.dataset.key;
         if (target.matches('.checkbox') || target.closest('.file-actions')) {
             if (target.matches('.checkbox')) {
                 fileItem.classList.toggle('selected', target.checked);
                 const totalCheckboxes = document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').length;
                 const checkedCheckboxes = document.querySelectorAll('.checkbox:checked').length;
                 G.isAllSelected = totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes;
-                G.selectAllButton.textContent = G.isAllSelected ? '取消全选' : '全选';
-                updateActionButtonsVisibility();
+                updateBulkActionsState();
             }
-            if (target.matches('.menu-button')) {
-                e.stopPropagation();
-                const menu = fileItem.querySelector('.menu-items');
-                if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show');
-                menu.classList.toggle('show');
-                G.currentMenu = menu;
-            }
-            if(target.closest('.menu-item')) {
-                e.stopPropagation();
-                const action = target.closest('.menu-item').dataset.action;
-                if (action) {
-                    handleFileAction(action, key);
-                    target.closest('.menu-items').classList.remove('show');
-                    G.currentMenu = null;
-                }
-            }
+            if (target.matches('.menu-button')) { e.stopPropagation(); const menu = fileItem.querySelector('.menu-items'); if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show'); menu.classList.toggle('show'); G.currentMenu = menu; }
+            if(target.closest('.menu-item')) { e.stopPropagation(); const action = target.closest('.menu-item').dataset.action; if (action) { handleFileAction(action, key); target.closest('.menu-items').classList.remove('show'); G.currentMenu = null; } }
             return;
         }
-        
-        const fileType = getFileIcon(key);
-        const isFolder = key.endsWith('/') || key === '..';
-
-        if (isFolder) {
-            G.currentPath = (key === '..') ? fileItem.dataset.path : key;
-            G.isAllSelected = false;
-            G.selectAllButton.textContent = '全选';
-            renderFiles();
-        } else if (fileType === 'image') {
-            const imageIndex = G.imageFiles.findIndex(f => f.key === key);
-            if (imageIndex > -1) openLightbox(imageIndex);
-        } else if (fileType === 'video') {
-            G.videoElement.src = \`/\${encodeURIComponent(key)}\`;
-            G.videoPlayer.classList.remove('hidden');
-            G.videoElement.play().catch(err => console.error("Video play failed:", err));
-        }
+        const fileType = getFileIcon(key); const isFolder = key.endsWith('/') || key === '..';
+        if (isFolder) { G.currentPath = (key === '..') ? fileItem.dataset.path : key; G.isAllSelected = false; renderFiles(); updateBulkActionsState();} else if (fileType === 'image') { const imageIndex = G.imageFiles.findIndex(f => f.key === key); if (imageIndex > -1) openLightbox(imageIndex); } else if (fileType === 'video') { G.videoElement.src = \`/\${encodeURIComponent(key)}\`; G.videoPlayer.classList.remove('hidden'); G.videoElement.play().catch(err => console.error("Video play failed:", err)); }
     });
     
     document.addEventListener('click', (e) => {
-        if (G.currentMenu && !e.target.closest('.menu-button')) {
-            G.currentMenu.classList.remove('show');
-            G.currentMenu = null;
-        }
+        if (G.currentMenu && !e.target.closest('.file-actions .menu-button')) { G.currentMenu.classList.remove('show'); G.currentMenu = null; }
+        if (G.mobileSelectMenu.classList.contains('show') && !e.target.closest('#mobile-select-menu-trigger')) { G.mobileSelectMenu.classList.remove('show'); }
     });
     
     window.addEventListener('resize', updateThemeTogglePosition);
@@ -1143,21 +796,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const init = () => {
     applyTheme();
     const savedPassword = localStorage.getItem('r2-password');
-    if (savedPassword) { 
-        G.passwordInput.value = savedPassword; 
-        handleLogin(); 
-    } else {
-        if(G.pageHeader) G.pageHeader.classList.remove('hidden');
-        if(G.pageFooter) G.pageFooter.classList.remove('hidden');
-    }
-    applyViewMode(); 
-    setupEventListeners();
-    updateThemeTogglePosition();
+    if (savedPassword) { G.passwordInput.value = savedPassword; handleLogin(); } else { if(G.pageHeader) G.pageHeader.classList.remove('hidden'); if(G.pageFooter) G.pageFooter.classList.remove('hidden'); }
+    applyViewMode(); setupEventListeners(); updateThemeTogglePosition();
   };
   
   init();
 });
 </script>
+
 </body>
 </html>
 `;
