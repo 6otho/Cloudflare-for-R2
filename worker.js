@@ -1,15 +1,12 @@
 // =================================================================================
-// R2-UI-WORKER v7.2 (The Definitive Final Version by Gemini)
+// R2-UI-WORKER v7.3 (The Definitive Final Version by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI Fix) PERFECTED Sort Buttons: The sort buttons are now visually grouped into a
-//   single "capsule" component on both desktop and mobile, making their relationship
-//   clear and improving the UI's professional look as requested.
-// - (UI Fix) PERFECTED Desktop Button Logic: "Select All" button is now REPLACED by a
-//   group of "Delete/Move/Deselect" buttons in the exact same spot, solving both the
-//   layout shift and the awkward empty space issue.
-// - All other features from the last stable version (mobile menu, search icon, etc.)
-//   are maintained. This is the definitive version.
+// - (UI Fix) RESTORED DESKTOP BUTTON COLORS: The "Deselect All", "Move Selected", and
+//   "Delete Selected" buttons now correctly display their green, blue, and red colors
+//   again. A CSS specificity issue was resolved.
+// - All other features from the last stable version are maintained. This is the
+//   definitive, final, and correct version.
 // =================================================================================
 
 export default {
@@ -288,8 +285,8 @@ export default {
     #view-toggle-button { width: 36px; padding: 0; }
     #view-toggle-button svg { width: 20px; height: 20px; }
     #select-all-button, #deselect-all-button, #mobile-select-menu-trigger { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
-    #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
-    #move-selected-button { background-color: var(--c-primary); border-color: var(--c-primary); }
+    #bulk-actions-container #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
+    #bulk-actions-container #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
     .sort-button-group { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;}
     .sort-button-group:hover { border-color: var(--c-primary); }
     .sort-button-group button { border: none; border-radius: 0; }
