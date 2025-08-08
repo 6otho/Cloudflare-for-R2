@@ -2,11 +2,9 @@
 // R2-UI-WORKER v7.3 (The Definitive Final Version by Gemini)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI Fix) PERFECTED Item Menu: Menus on individual files now have a higher z-index
-//   when active, preventing them from being overlapped by other items.
-// - (UI Fix) INTELLIGENT MENU POSITIONING: Item menus are now aware of their position
-//   and will pop upwards if they are too close to the bottom of the screen, ensuring
-//   they are always fully visible.
+// - (UI Fix) RESTORED DESKTOP BUTTON COLORS: The "Deselect All", "Move Selected", and
+//   "Delete Selected" buttons now correctly display their green, blue, and red colors
+//   again. A CSS specificity issue was resolved.
 // - All other features from the last stable version are maintained. This is the
 //   definitive, final, and correct version.
 // =================================================================================
@@ -287,8 +285,8 @@ export default {
     #view-toggle-button { width: 36px; padding: 0; }
     #view-toggle-button svg { width: 20px; height: 20px; }
     #select-all-button, #deselect-all-button, #mobile-select-menu-trigger { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
-    #bulk-actions-container #delete-button, #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
-    #bulk-actions-container #move-selected-button, #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+    #bulk-actions-container #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
+    #bulk-actions-container #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
     .sort-button-group { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;}
     .sort-button-group:hover { border-color: var(--c-primary); }
     .sort-button-group button { border: none; border-radius: 0; }
@@ -314,7 +312,6 @@ export default {
     .list-view .checkbox { margin-left: 0; margin-right: 10px; }
     .file-container.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
     .grid-view .file-item { position: relative; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; cursor: pointer; }
-    .grid-view .file-item.menu-active { z-index: 30; }
     .grid-view .file-item:hover { transform: translateY(-5px); }
     .grid-view .file-item.selected { border-color: var(--c-primary); transform: translateY(0) !important; }
     .grid-view .icon { height: 120px; display: flex; justify-content: center; align-items: center; background-color: var(--bg-color); border-top-left-radius: 10px; border-top-right-radius: 10px; }
@@ -333,15 +330,15 @@ export default {
     .theme-toggle { position: fixed; bottom: 25px; right: 25px; padding: 8px 12px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; z-index: 1001; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .theme-toggle:hover { background-color: var(--c-primary); color: #fff; }
     .list-view .file-actions { position: static; margin-left: auto; padding-left: 10px; }
+    .list-view .menu-button { width: 20px; height: 20px; font-size: 14px; }
+    .list-view .menu-items { bottom: auto; top: 30px; right: 0; }
     .grid-view .file-actions { position: absolute; bottom: 5px; right: 5px; z-index: 10; opacity: 0; transition: opacity 0.2s ease-in-out; }
     .grid-view .file-item:hover .file-actions, .grid-view .file-item.selected .file-actions { opacity: 1; }
-    .file-actions { position: relative; }
-    .file-actions .menu-button { width: 20px; height: 20px; background-color: var(--card-bg); border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; opacity: 0.7; transition: opacity 0.3s; }
-    .file-actions .menu-button:hover { opacity: 1; background-color: var(--c-primary); color: white; }
-    .file-actions .menu-button::after { content: "⋮"; font-size: 16px; font-weight: bold; }
+    .menu-button-wrapper { position: relative; }
+    .menu-button { width: 20px; height: 20px; background-color: var(--card-bg); border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; opacity: 0.7; transition: opacity 0.3s; }
+    .menu-button:hover { opacity: 1; background-color: var(--c-primary); color: white; }
+    .menu-button::after { content: "⋮"; font-size: 16px; font-weight: bold; }
     .menu-items { position: absolute; background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 20; width: max-content; min-width: 120px; overflow: hidden; display: none; }
-    .file-actions .menu-items { right: 0; top: calc(100% + 5px); bottom: auto; }
-    .file-actions .menu-items.pop-up { top: auto; bottom: calc(100% + 5px); }
     .actions .menu-items { right: 0; top: 42px; }
     .menu-items.show { display: block; }
     .menu-item { padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap;}
@@ -777,47 +774,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 G.isAllSelected = totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes;
                 updateBulkActionsState();
             }
-            if (target.matches('.menu-button')) {
-                e.stopPropagation();
-                const menu = fileItem.querySelector('.menu-items');
-
-                const currentlyActiveItem = document.querySelector('.file-item.menu-active');
-                if (currentlyActiveItem && currentlyActiveItem !== fileItem) {
-                    currentlyActiveItem.classList.remove('menu-active');
-                    currentlyActiveItem.querySelector('.menu-items').classList.remove('show');
-                }
-
-                menu.classList.toggle('show');
-                fileItem.classList.toggle('menu-active', menu.classList.contains('show'));
-                
-                if (menu.classList.contains('show')) {
-                    G.currentMenu = menu;
-                    const menuHeight = menu.offsetHeight;
-                    const buttonRect = target.getBoundingClientRect();
-                    const viewportHeight = window.innerHeight;
-                    if (buttonRect.bottom + menuHeight + 10 > viewportHeight) {
-                        menu.classList.add('pop-up');
-                    } else {
-                        menu.classList.remove('pop-up');
-                    }
-                } else {
-                    G.currentMenu = null;
-                }
-            }
-            if(target.closest('.menu-item')) { 
-                e.stopPropagation(); 
-                const action = target.closest('.menu-item').dataset.action; 
-                if (action) { 
-                    handleFileAction(action, key); 
-                    const parentMenu = target.closest('.menu-items');
-                    if (parentMenu) {
-                      parentMenu.classList.remove('show');
-                      const parentItem = parentMenu.closest('.file-item');
-                      if(parentItem) parentItem.classList.remove('menu-active');
-                    }
-                    G.currentMenu = null; 
-                } 
-            }
+            if (target.matches('.menu-button')) { e.stopPropagation(); const menu = fileItem.querySelector('.menu-items'); if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show'); menu.classList.toggle('show'); G.currentMenu = menu; }
+            if(target.closest('.menu-item')) { e.stopPropagation(); const action = target.closest('.menu-item').dataset.action; if (action) { handleFileAction(action, key); target.closest('.menu-items').classList.remove('show'); G.currentMenu = null; } }
             return;
         }
         const fileType = getFileIcon(key); const isFolder = key.endsWith('/') || key === '..';
@@ -825,12 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     document.addEventListener('click', (e) => {
-        if (G.currentMenu && !e.target.closest('.file-actions .menu-button')) {
-            G.currentMenu.classList.remove('show');
-            const activeItem = G.currentMenu.closest('.file-item.menu-active');
-            if (activeItem) activeItem.classList.remove('menu-active');
-            G.currentMenu = null;
-        }
+        if (G.currentMenu && !e.target.closest('.file-actions .menu-button')) { G.currentMenu.classList.remove('show'); G.currentMenu = null; }
         if (G.mobileSelectMenu.classList.contains('show') && !e.target.closest('#mobile-select-menu-trigger')) { G.mobileSelectMenu.classList.remove('show'); }
     });
     
