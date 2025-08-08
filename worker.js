@@ -1,12 +1,14 @@
 // =================================================================================
-// R2-UI-WORKER v7.3 (The Definitive Final Version by Gemini)
+// R2-UI-WORKER v7.4 (Refined by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI Fix) RESTORED DESKTOP BUTTON COLORS: The "Deselect All", "Move Selected", and
-//   "Delete Selected" buttons now correctly display their green, blue, and red colors
-//   again. A CSS specificity issue was resolved.
-// - All other features from the last stable version are maintained. This is the
-//   definitive, final, and correct version.
+// - (UI Feature) ADDED FILE LIST HEADER: A persistent header with a logo and a theme-toggle button
+//   is now visible on the file list page, mirroring the login screen's header style.
+//   The theme toggle is responsive and smaller on mobile devices.
+// - (UI/UX Fix) ADAPTIVE & FOREGROUND MENU: The three-dot action menu on file items now
+//   intelligently positions itself upwards or downwards to avoid going off-screen.
+//   It also now correctly renders in the foreground, preventing it from being obscured
+//   by other elements, thanks to a z-index adjustment on the active item.
 // =================================================================================
 
 export default {
@@ -224,7 +226,7 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
@@ -246,8 +248,9 @@ export default {
     }
     .hidden { display: none !important; }
     .page-header {
-      position: fixed; top: 0; left: 0; width: 100%; height: 72px; padding: 0 35px; box-sizing: border-box;
-      display: flex; align-items: center; background-color: rgba(var(--card-bg-rgb), 0.8); backdrop-filter: blur(8px);
+      position: fixed; top: 0; left: 0; width: 100%; height: 72px; padding: 0 25px; box-sizing: border-box;
+      display: flex; align-items: center; justify-content: space-between; /* MODIFIED: space-between for alignment */
+      background-color: rgba(var(--card-bg-rgb), 0.8); backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); z-index: 10;
     }
     html[data-theme='dark'] .page-header { background-color: rgba(36, 40, 59, 0.8); }
@@ -272,7 +275,7 @@ export default {
     .login-box input { width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
     .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; }
     #login-error { color: var(--c-error); margin-top: 10px; height: 20px; }
-    #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; }
+    #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; padding-top: 92px; /* ADDED: Padding to avoid overlap with fixed header */ }
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
     header h1 { color: var(--c-primary); margin: 0; font-size: 1.8em; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -312,6 +315,8 @@ export default {
     .list-view .checkbox { margin-left: 0; margin-right: 10px; }
     .file-container.grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
     .grid-view .file-item { position: relative; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid transparent; transition: transform 0.2s, border-color 0.2s; cursor: pointer; }
+    /* ADDED: z-index for active menu item */
+    .grid-view .file-item.menu-active { z-index: 15; }
     .grid-view .file-item:hover { transform: translateY(-5px); }
     .grid-view .file-item.selected { border-color: var(--c-primary); transform: translateY(0) !important; }
     .grid-view .icon { height: 120px; display: flex; justify-content: center; align-items: center; background-color: var(--bg-color); border-top-left-radius: 10px; border-top-right-radius: 10px; }
@@ -329,6 +334,9 @@ export default {
     #lightbox-prev { left: 20px; } #lightbox-next { right: 20px; } #lightbox-close { top: 20px; right: 20px; transform: none; font-size: 1.5em; }
     .theme-toggle { position: fixed; bottom: 25px; right: 25px; padding: 8px 12px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px; cursor: pointer; z-index: 1001; font-size: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .theme-toggle:hover { background-color: var(--c-primary); color: #fff; }
+    /* ADDED: Header theme toggle button style */
+    .theme-toggle-header { background: none; border: none; cursor: pointer; font-size: 22px; padding: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background-color .2s; }
+    .theme-toggle-header:hover { background-color: var(--border-color); }
     .list-view .file-actions { position: static; margin-left: auto; padding-left: 10px; }
     .list-view .menu-button { width: 20px; height: 20px; font-size: 14px; }
     .list-view .menu-items { bottom: auto; top: 30px; right: 0; }
@@ -339,6 +347,10 @@ export default {
     .menu-button:hover { opacity: 1; background-color: var(--c-primary); color: white; }
     .menu-button::after { content: "⋮"; font-size: 16px; font-weight: bold; }
     .menu-items { position: absolute; background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 20; width: max-content; min-width: 120px; overflow: hidden; display: none; }
+    /* ADDED: Adaptive menu positioning styles */
+    .grid-view .menu-items { top: 110%; /* Default down */ }
+    .grid-view .menu-items.menu-popup-up { top: auto; bottom: 110%; /* Pop up */ }
+    .list-view .menu-items.menu-popup-up { top: auto; bottom: 100%; }
     .actions .menu-items { right: 0; top: 42px; }
     .menu-items.show { display: block; }
     .menu-item { padding: 8px 12px; cursor: pointer; font-size: 14px; transition: background-color 0.2s; white-space: nowrap;}
@@ -364,6 +376,9 @@ export default {
       .page-header { flex-direction: row; align-items: center; padding: 0 15px; }
       .page-header .logo { font-size: 2em; margin-right: 8px;}
       .page-header .project-name { font-size: 1.1em; }
+      /* ADDED: Smaller theme toggle for header on mobile */
+      .theme-toggle-header { font-size: 18px; padding: 6px; }
+      #app-view { padding-top: 82px; }
       .page-footer { font-size: 0.7em; }
       header { flex-direction: column; align-items: flex-start; gap: 20px; }
       .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;}
@@ -389,14 +404,18 @@ export default {
 </head>
 <body>
 
+  <!-- MODIFIED: Header now contains a theme toggle button -->
   <header class="page-header hidden">
     <div class="logo-title-group">
       <span class="logo">☁️</span>
       <span class="project-name">Cloudflare-R2</span>
     </div>
+    <button class="theme-toggle-header" id="header-theme-toggle" title="切换亮/暗模式">
+      <span class="sun">☀️</span><span class="moon hidden">🌙</span>
+    </button>
   </header>
 
-  <button class="theme-toggle" id="global-theme-toggle"><span class="sun">☀️</span><span class="moon hidden">🌙</span></button>
+  <button class="theme-toggle" id="global-theme-toggle" title="切换亮/暗模式"><span class="sun">☀️</span><span class="moon hidden">🌙</span></button>
 
   <div class="dialog" id="rename-dialog">
     <h3>重命名</h3><input type="text" id="new-filename" placeholder="新名称"><div class="dialog-buttons"><button id="rename-cancel">取消</button><button id="rename-confirm">确认</button></div>
@@ -499,7 +518,8 @@ document.addEventListener('DOMContentLoaded', () => {
     moveSelectedButton: document.getElementById('move-selected-button'), logoutButton: document.getElementById('logout-button'), passwordInput: document.getElementById('password-input'),
     fileInput: document.getElementById('file-input'), dropZone: document.getElementById('drop-zone'), lightbox: document.getElementById('lightbox'), lightboxImage: document.getElementById('lightbox-image'),
     lightboxClose: document.getElementById('lightbox-close'), lightboxPrev: document.getElementById('lightbox-prev'), lightboxNext: document.getElementById('lightbox-next'),
-    themeToggle: document.getElementById('global-theme-toggle'), renameDialog: document.getElementById('rename-dialog'), newFilename: document.getElementById('new-filename'),
+    themeToggle: document.getElementById('global-theme-toggle'), headerThemeToggle: document.getElementById('header-theme-toggle'), // ADDED
+    renameDialog: document.getElementById('rename-dialog'), newFilename: document.getElementById('new-filename'),
     renameCancel: document.getElementById('rename-cancel'), renameConfirm: document.getElementById('rename-confirm'), createFolderButton: document.getElementById('create-folder-button'),
     createFolderDialog: document.getElementById('create-folder-dialog'), newFolderName: document.getElementById('new-folder-name'), createFolderCancel: document.getElementById('create-folder-cancel'),
     createFolderConfirm: document.getElementById('create-folder-confirm'), moveDialog: document.getElementById('move-dialog'), moveItemName: document.getElementById('move-item-name'),
@@ -542,7 +562,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const generateVideoThumbnail = (key) => new Promise((resolve, reject) => { const video = document.createElement('video'); const canvas = document.createElement('canvas'); const context = canvas.getContext('2d'); let resolved = false; video.crossOrigin = "anonymous"; video.src = \`/\${encodeURIComponent(key)}\`; video.currentTime = 1; const timeoutId = setTimeout(() => { if (!resolved) { cleanup(); reject(new Error('Thumbnail generation timed out')); } }, 5000); const cleanup = () => { video.removeEventListener('seeked', onSeeked); video.removeEventListener('error', onError); video.src = ''; clearTimeout(timeoutId); }; const onSeeked = () => { if (resolved) return; resolved = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; context.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.8); cleanup(); resolve(dataUrl); }; const onError = (e) => { if (resolved) return; resolved = true; cleanup(); reject(new Error('Failed to load video.')); }; video.addEventListener('seeked', onSeeked, { once: true }); video.addEventListener('error', onError, { once: true }); });
   const formatBytes = (bytes, d=2) => { if(!+bytes)return"0 Bytes";const i=Math.floor(Math.log(bytes)/Math.log(1024)); return \`\${parseFloat((bytes/Math.pow(1024,i)).toFixed(d))} \${"Bytes,KB,MB,GB,TB"[i]}\` };
   const apiCall = async (endpoint, options = {}) => { const headers = { 'x-auth-password': G.password, ...options.headers }; const response = await fetch(endpoint, { ...options, headers }); if (!response.ok) throw new Error(await response.text() || \`HTTP error! \${response.status}\`); return response; };
-  const applyTheme = () => { document.documentElement.setAttribute('data-theme', G.theme); const sun = G.themeToggle.querySelector('.sun'); const moon = G.themeToggle.querySelector('.moon'); if (G.theme === 'dark') { sun.classList.add('hidden'); moon.classList.remove('hidden'); } else { sun.classList.remove('hidden'); moon.classList.add('hidden'); } };
+  
+  // MODIFIED: applyTheme now updates both toggle buttons
+  const applyTheme = () => {
+    document.documentElement.setAttribute('data-theme', G.theme);
+    const toggles = [G.themeToggle, G.headerThemeToggle];
+    toggles.forEach(toggle => {
+      if (!toggle) return;
+      const sun = toggle.querySelector('.sun');
+      const moon = toggle.querySelector('.moon');
+      if (G.theme === 'dark') {
+        sun.classList.add('hidden');
+        moon.classList.remove('hidden');
+      } else {
+        sun.classList.remove('hidden');
+        moon.classList.add('hidden');
+      }
+    });
+  };
+
   const toggleTheme = () => { G.theme = G.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('theme', G.theme); applyTheme(); };
   const applyViewMode = () => { 
     G.fileContainer.className = \`file-container \${G.viewMode}-view\`; 
@@ -611,7 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = document.createElement('div'); item.className = 'file-item'; item.dataset.key = file.key; if (isNavUp) item.dataset.path = file.path;
       let iconHTML = '';
       if (G.viewMode === 'grid' && fileTypeIdentifier === 'image') { iconHTML = \`<img src="/\${encodeURIComponent(file.key)}" alt="\${displayName}" loading="lazy">\`; } else if (G.viewMode === 'grid' && fileTypeIdentifier === 'video') { iconHTML = \`<img class="video-thumbnail-placeholder" data-video-key="\${file.key}" alt="\${displayName}">\`; } else { let symbolId; switch (fileTypeIdentifier) { case 'image': symbolId = '#icon-file'; break; case 'video': symbolId = '#icon-video'; break; default: symbolId = fileTypeIdentifier; } iconHTML = \`<svg><use xlink:href="\${symbolId}"></use></svg>\`; }
-      const actionsHTML = isNavUp ? '' : \` <div class="file-actions"> <div class="menu-button" data-key="\${file.key}"></div> <div class="menu-items" data-key="\${file.key}"> <div class="menu-item" data-action="rename">重命名</div> \${!isFolder ? '<div class="menu-item" data-action="download">下载</div>' : ''} <div class="menu-item" data-action="move">移动</div> \${!isFolder ? '<div class="menu-item" data-action="copy-link">复制链接</div>' : ''} <div class="menu-item danger" data-action="delete" style="color: var(--c-error);">删除</div> </div> </div>\`;
+      const actionsHTML = isNavUp ? '' : \` <div class="file-actions"> <div class="menu-button-wrapper"><div class="menu-button" data-key="\${file.key}"></div> <div class="menu-items" data-key="\${file.key}"> <div class="menu-item" data-action="rename">重命名</div> \${!isFolder ? '<div class="menu-item" data-action="download">下载</div>' : ''} <div class="menu-item" data-action="move">移动</div> \${!isFolder ? '<div class="menu-item" data-action="copy-link">复制链接</div>' : ''} <div class="menu-item danger" data-action="delete" style="color: var(--c-error);">删除</div> </div></div> </div>\`;
       const checkboxHTML = isNavUp ? '' : \`<input type="checkbox" class="checkbox" data-key="\${file.key}">\`;
       if (G.viewMode === 'grid') { item.innerHTML = \`<div class="icon">\${iconHTML}</div><div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>\${checkboxHTML}\${actionsHTML}\`; } else { item.innerHTML = \`\${checkboxHTML}<div class="icon">\${iconHTML}</div><div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>\${actionsHTML}\`; }
       G.fileContainer.appendChild(item);
@@ -673,8 +711,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const pw = G.passwordInput.value; if (!pw) return; G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
     try { 
       await apiCall('/api/list'); localStorage.setItem('r2-password', pw);
-      if (G.pageHeader) G.pageHeader.classList.add('hidden'); if (G.pageFooter) G.pageFooter.classList.add('hidden');
-      G.loginView.classList.add('hidden'); G.appView.classList.remove('hidden'); updateThemeTogglePosition(); await refreshFileList(); 
+      // MODIFIED: Show header, hide floating theme toggle
+      if (G.pageHeader) G.pageHeader.classList.remove('hidden'); 
+      if (G.themeToggle) G.themeToggle.classList.add('hidden');
+      if (G.pageFooter) G.pageFooter.classList.add('hidden');
+      G.loginView.classList.add('hidden'); G.appView.classList.remove('hidden'); 
+      await refreshFileList(); 
     } catch (error) { document.getElementById('login-error').textContent = '密码错误'; setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); }
     finally { G.loginButton.textContent = "授 权 访 问"; G.loginButton.disabled = false; }
   };
@@ -694,19 +736,16 @@ document.addEventListener('DOMContentLoaded', () => {
     try { await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) }); showToast(\`成功删除 \${keys.length} 个项目\`); await refreshFileList(); } catch (error) { showToast(\`删除失败: \${error.message}\`); }
   };
 
-  const updateThemeTogglePosition = () => { const isMobile = window.innerWidth <= 767; const isLoginPage = !G.loginView.classList.contains('hidden'); G.themeToggle.classList.toggle('top-right', isMobile && isLoginPage); };
-
   const setupEventListeners = () => {
     G.themeToggle.addEventListener('click', toggleTheme);
+    G.headerThemeToggle.addEventListener('click', toggleTheme); // ADDED
     G.loginButton.addEventListener('click', handleLogin);
     G.logoutButton.addEventListener('click', handleLogout);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
     
-    // Common button listeners
     G.createFolderButton.addEventListener('click', () => { G.newFolderName.value = ''; G.createFolderDialog.classList.add('show'); });
     G.viewToggleButton.addEventListener('click', toggleViewMode);
     
-    // Desktop-specific button listeners
     G.selectAllButton.addEventListener('click', () => toggleSelectAll(true));
     G.deselectAllButton.addEventListener('click', () => toggleSelectAll(false));
     G.deleteButton.addEventListener('click', () => handleDelete());
@@ -719,7 +758,6 @@ document.addEventListener('DOMContentLoaded', () => {
         G.moveItemName.textContent = \`移动 \${G.keysToMove.length} 个项目\`; G.moveDialog.classList.add('show');
     });
 
-    // --- Mobile "Select All" Menu Listeners ---
     G.mobileSelectMenuTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleSelectAll(!G.isAllSelected);
@@ -764,37 +802,113 @@ document.addEventListener('DOMContentLoaded', () => {
     G.sortByButton.addEventListener('click', () => { const currentIndex = G.sortCycle.indexOf(G.sortBy); const nextIndex = (currentIndex + 1) % G.sortCycle.length; G.sortBy = G.sortCycle[nextIndex]; renderFiles(); });
     G.sortDirectionButton.addEventListener('click', () => { G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc'; renderFiles(); });
     
+    // MODIFIED: Click listener for file container to handle new menu logic
     G.fileContainer.addEventListener('click', e => {
-        const target = e.target; const fileItem = target.closest('.file-item'); if (!fileItem) return; const key = fileItem.dataset.key;
-        if (target.matches('.checkbox') || target.closest('.file-actions')) {
-            if (target.matches('.checkbox')) {
-                fileItem.classList.toggle('selected', target.checked);
-                const totalCheckboxes = document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').length;
-                const checkedCheckboxes = document.querySelectorAll('.checkbox:checked').length;
-                G.isAllSelected = totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes;
-                updateBulkActionsState();
+        const menuButton = e.target.closest('.menu-button');
+        const fileItem = e.target.closest('.file-item');
+        if (!fileItem) return;
+        const key = fileItem.dataset.key;
+
+        // Logic for menu button click (adaptive position & z-index)
+        if (menuButton) {
+            e.stopPropagation();
+            const menu = fileItem.querySelector('.menu-items');
+            if (!menu) return;
+            
+            // Close any other open menu
+            if (G.currentMenu && G.currentMenu !== menu) {
+                G.currentMenu.classList.remove('show', 'menu-popup-up');
+                G.currentMenu.closest('.file-item')?.classList.remove('menu-active');
             }
-            if (target.matches('.menu-button')) { e.stopPropagation(); const menu = fileItem.querySelector('.menu-items'); if (G.currentMenu && G.currentMenu !== menu) G.currentMenu.classList.remove('show'); menu.classList.toggle('show'); G.currentMenu = menu; }
-            if(target.closest('.menu-item')) { e.stopPropagation(); const action = target.closest('.menu-item').dataset.action; if (action) { handleFileAction(action, key); target.closest('.menu-items').classList.remove('show'); G.currentMenu = null; } }
+
+            const isNowVisible = !menu.classList.contains('show');
+            menu.classList.toggle('show', isNowVisible);
+            fileItem.classList.toggle('menu-active', isNowVisible);
+
+            if (isNowVisible) {
+                const menuRect = menu.getBoundingClientRect();
+                const buttonRect = menuButton.getBoundingClientRect();
+                if (buttonRect.bottom + menuRect.height > window.innerHeight) {
+                    menu.classList.add('menu-popup-up');
+                } else {
+                    menu.classList.remove('menu-popup-up');
+                }
+                G.currentMenu = menu;
+            } else {
+                G.currentMenu = null;
+            }
             return;
         }
-        const fileType = getFileIcon(key); const isFolder = key.endsWith('/') || key === '..';
-        if (isFolder) { G.currentPath = (key === '..') ? fileItem.dataset.path : key; G.isAllSelected = false; renderFiles(); updateBulkActionsState();} else if (fileType === 'image') { const imageIndex = G.imageFiles.findIndex(f => f.key === key); if (imageIndex > -1) openLightbox(imageIndex); } else if (fileType === 'video') { G.videoElement.src = \`/\${encodeURIComponent(key)}\`; G.videoPlayer.classList.remove('hidden'); G.videoElement.play().catch(err => console.error("Video play failed:", err)); }
+        
+        // Logic for other clicks on the file item
+        if (e.target.matches('.checkbox')) {
+            fileItem.classList.toggle('selected', e.target.checked);
+            const totalCheckboxes = document.querySelectorAll('.file-item:not([data-key=".."]) .checkbox').length;
+            const checkedCheckboxes = document.querySelectorAll('.checkbox:checked').length;
+            G.isAllSelected = totalCheckboxes > 0 && totalCheckboxes === checkedCheckboxes;
+            updateBulkActionsState();
+            return;
+        }
+
+        if (e.target.closest('.menu-item')) {
+            e.stopPropagation();
+            const action = e.target.closest('.menu-item').dataset.action;
+            if (action) {
+                handleFileAction(action, key);
+                e.target.closest('.menu-items').classList.remove('show');
+                fileItem.classList.remove('menu-active');
+                G.currentMenu = null;
+            }
+            return;
+        }
+
+        const fileType = getFileIcon(key);
+        const isFolder = key.endsWith('/') || key === '..';
+        if (isFolder) {
+            G.currentPath = (key === '..') ? fileItem.dataset.path : key;
+            G.isAllSelected = false;
+            renderFiles();
+            updateBulkActionsState();
+        } else if (fileType === 'image') {
+            const imageIndex = G.imageFiles.findIndex(f => f.key === key);
+            if (imageIndex > -1) openLightbox(imageIndex);
+        } else if (fileType === 'video') {
+            G.videoElement.src = \`/\${encodeURIComponent(key)}\`;
+            G.videoPlayer.classList.remove('hidden');
+            G.videoElement.play().catch(err => console.error("Video play failed:", err));
+        }
     });
     
     document.addEventListener('click', (e) => {
-        if (G.currentMenu && !e.target.closest('.file-actions .menu-button')) { G.currentMenu.classList.remove('show'); G.currentMenu = null; }
-        if (G.mobileSelectMenu.classList.contains('show') && !e.target.closest('#mobile-select-menu-trigger')) { G.mobileSelectMenu.classList.remove('show'); }
+        if (G.currentMenu && !e.target.closest('.menu-button-wrapper')) {
+            G.currentMenu.classList.remove('show', 'menu-popup-up');
+            G.currentMenu.closest('.file-item')?.classList.remove('menu-active');
+            G.currentMenu = null;
+        }
+        if (G.mobileSelectMenu.classList.contains('show') && !e.target.closest('#mobile-select-menu-trigger')) {
+            G.mobileSelectMenu.classList.remove('show');
+        }
     });
     
-    window.addEventListener('resize', updateThemeTogglePosition);
+    window.addEventListener('resize', () => {
+      const isLoginPage = !G.loginView.classList.contains('hidden');
+      if (isLoginPage) { G.themeToggle.classList.remove('hidden'); }
+    });
   };
   
   const init = () => {
     applyTheme();
     const savedPassword = localStorage.getItem('r2-password');
-    if (savedPassword) { G.passwordInput.value = savedPassword; handleLogin(); } else { if(G.pageHeader) G.pageHeader.classList.remove('hidden'); if(G.pageFooter) G.pageFooter.classList.remove('hidden'); }
-    applyViewMode(); setupEventListeners(); updateThemeTogglePosition();
+    if (savedPassword) {
+      G.passwordInput.value = savedPassword;
+      handleLogin();
+    } else {
+      if (G.pageHeader) G.pageHeader.classList.remove('hidden');
+      if (G.themeToggle) G.themeToggle.classList.add('hidden'); // Hide floating toggle on login page
+      if (G.pageFooter) G.pageFooter.classList.remove('hidden');
+    }
+    applyViewMode();
+    setupEventListeners();
   };
   
   init();
