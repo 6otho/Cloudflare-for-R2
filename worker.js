@@ -1,12 +1,12 @@
 // =================================================================================
-// R2-UI-WORKER v7.7 (Refined by AI Assistant)
+// R2-UI-WORKER v8.1 (Critical Fix by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (Mobile UX) DISABLED DOUBLE-TAP ZOOM: The entire page now ignores the double-tap
-//   to zoom gesture on mobile browsers. This prevents accidental zooming when tapping
-//   buttons quickly (e.g., lightbox navigation). Standard pinch-to-zoom is
-//   unaffected and remains fully functional.
-// - All features from v7.6 are maintained.
+// - (CRITICAL FIX) RESTORED LOGIN FUNCTIONALITY: A typo introduced in v8.0
+//   ( 'close lightbox' instead of 'closeLightbox' ) caused a fatal JavaScript
+//   error, preventing event listeners, including the login button's, from being
+//   attached. This has been corrected.
+// - All other features, including the external apple-touch-icon, are maintained.
 // =================================================================================
 
 export default {
@@ -224,7 +224,7 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYkAAAAAXNSR0IArs4c6QAAAERlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAtKADAAQAAAABAAAAtAAAAABUMi4kAAAF5ElEQVR4Ae3d/YtcRRzA8e+9OYlNaLJJN00s7S1VoYLtBcFfECwoCFZprwrtKy0U/A8sFDS1sDDEgrUPBFtQUDG1sJCQyiPaSIsQW02y2SSb3b6+77C38868mXfuyXy4wHHezjs788zsu/Ob7IohwzBEi4gIICIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1IiIiIiM1J+2/A1aGtrg9XjR2z/+wX2r7/G5tY2uP3hWvS7tA0C35b43x0aGhpgaKgL2tpa0NfXh91d1Vj+7/3s5lY3PD5+wpa2Nrzr6+vQ3d0NXV1daGpqQu3371h/9y42n+5fP8A29/8H2PD+LVavf8n6+noM+l1aC4GfJ/L/14fFxcVYd3s7tv/zD/hV3+Hw8DAcHR1h+433sH/lCqze+grrN27g9/Hx8e/o92k1BHy+yP/dXV1dh4sX/4Ld27fgrq4urKurw+7uLgz/Y4f6jRu4aWkpHh8fo/7+fax/8CAeHR3B/f2/Yd28eQO/P3p0+Dv0+rQWAr9P5P/u9vZ2bGxsREdH5z9Xb19//8Wf/30P9Q8e4L/29vbwe7T+fPwC/u+Hh4fxL2hpaUHr6+v4X+j/3T+8/f5/+ctf/k7/hURE/k/636/z+8H/e3l5edjY2ID7+2/w3N3djd7f/ob39/djZ2cnur6+joMHD+L29nbs7u7i3e3t7e/w+rQWAR8G7d/+i+/P/t/r3/5+/vx5aO8vX4T79+9jfX09NjY2oLGxEV1dXcjnY9M0jI6ORvv7+9H29nb0/f0dXV1d0NbWhvb2dnR1dUV/f7/a2trQ2NiI5uZmdHd3I5/f6upqNDY2YvP5PLy9vR2Hh4e4ubnJ29vb29s7ODjw7e7u7ubm5vb2dnZ2Njaenj17FhMT45s7d+64u7t7e3t7eHi4ubkZGz9+HGtrr2P9o49h8+VL/N//2Pz8fNzenrL29nbx8Vf4X+j/+/fv/3P0+rT+G+n+3z9+Pj60t7ejvLyc9/Py8hKnp6e8u7m5ifPz8/B/+S/s3/oKq9e/RPsPHuTf7j9G/R/+kPd+vP99fHz8G/w+rQaAzxf5f782/t2/0L99+wZnZ2doenqa9/M//8S7//f/sX3lCiw2Npb3+/cPaGho4H9D/3f/8PabP/kX3+d9/9//3O/TKiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+pv/9IiIiIqK+/gL24/W+D/MvdwAAAABJRU5ErkJggg==">
+  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/PUB%2F0260eb1c1d2b11bcb9e94a8ed2a2614b.jpg">
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
@@ -243,7 +243,7 @@ export default {
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; 
       background-color: var(--bg-color); color: var(--text-color); font-size: 16px; transition: background-color .3s, color .3s;
-      touch-action: manipulation; /* ADDED: Prevents double-tap to zoom on touch devices */
+      touch-action: manipulation;
     }
     .hidden { display: none !important; }
     .page-header {
