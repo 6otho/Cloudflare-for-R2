@@ -1,12 +1,12 @@
 // =================================================================================
-// R2-UI-WORKER v7.6 (Refined by AI Assistant)
+// R2-UI-WORKER v7.7 (Refined by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI/UX Fix) FULLY ADAPTIVE MENU: The action menu now also adapts horizontally.
-//   It will intelligently open to the left when the file item is near the right
-//   edge of the viewport, preventing the menu from being cut off. This works
-//   on both desktop and mobile.
-// - All features from v7.5 are maintained.
+// - (Mobile UX) DISABLED DOUBLE-TAP ZOOM: The entire page now ignores the double-tap
+//   to zoom gesture on mobile browsers. This prevents accidental zooming when tapping
+//   buttons quickly (e.g., lightbox navigation). Standard pinch-to-zoom is
+//   unaffected and remains fully functional.
+// - All features from v7.6 are maintained.
 // =================================================================================
 
 export default {
@@ -243,6 +243,7 @@ export default {
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; 
       background-color: var(--bg-color); color: var(--text-color); font-size: 16px; transition: background-color .3s, color .3s;
+      touch-action: manipulation; /* ADDED: Prevents double-tap to zoom on touch devices */
     }
     .hidden { display: none !important; }
     .page-header {
@@ -347,7 +348,6 @@ export default {
     .grid-view .menu-items.menu-popup-up { top: auto; bottom: 110%; }
     .list-view .menu-items { top: 105%; }
     .list-view .menu-items.menu-popup-up { top: auto; bottom: 105%; }
-    /* ADDED: Style for left-popping menu */
     .menu-items.menu-popup-left {
         right: 100%;
         left: auto;
@@ -799,7 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
     G.sortByButton.addEventListener('click', () => { const currentIndex = G.sortCycle.indexOf(G.sortBy); const nextIndex = (currentIndex + 1) % G.sortCycle.length; G.sortBy = G.sortCycle[nextIndex]; renderFiles(); });
     G.sortDirectionButton.addEventListener('click', () => { G.sortDirection = G.sortDirection === 'asc' ? 'desc' : 'asc'; renderFiles(); });
     
-    // MODIFIED: Click listener with fully adaptive menu logic
     G.fileContainer.addEventListener('click', e => {
         const target = e.target;
         const fileItem = target.closest('.file-item');
@@ -807,7 +806,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const key = fileItem.dataset.key;
         
-        // --- 1. Handle specific interactive elements first (checkbox, menu) ---
         if (target.matches('.checkbox') || target.closest('.file-actions')) {
             if (target.matches('.checkbox')) {
                 fileItem.classList.toggle('selected', target.checked);
@@ -827,15 +825,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (isNowVisible) {
                     const buttonRect = menuButton.getBoundingClientRect();
-                    
-                    // Vertical check
                     if (buttonRect.bottom + menu.offsetHeight > window.innerHeight) { menu.classList.add('menu-popup-up'); } 
                     else { menu.classList.remove('menu-popup-up'); }
-                    
-                    // ADDED: Horizontal check
                     if (buttonRect.left + menu.offsetWidth > window.innerWidth) { menu.classList.add('menu-popup-left'); } 
                     else { menu.classList.remove('menu-popup-left'); }
-
                     G.currentMenu = menu;
                 } else { G.currentMenu = null; }
             }
@@ -852,10 +845,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // --- 2. Handle general item clicks ---
         const isFolder = key.endsWith('/') || key === '..';
         
-        // Special click logic for mobile grid view's info area
         if (G.viewMode === 'grid' && window.innerWidth <= 767 && !isFolder && target.closest('.info')) {
             const checkbox = fileItem.querySelector('.checkbox');
             if (checkbox) {
@@ -863,10 +854,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileItem.classList.toggle('selected', checkbox.checked);
                 updateBulkActionsState();
             }
-            return; // Prevent lightbox/video from opening
+            return;
         }
 
-        // Default action: navigate folder or open file
         if (isFolder) {
             G.currentPath = (key === '..') ? fileItem.dataset.path : key;
             G.isAllSelected = false;
