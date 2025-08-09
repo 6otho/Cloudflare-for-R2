@@ -1,13 +1,14 @@
 // =================================================================================
-// R2-UI-WORKER v8.9.5 (Bug Fix by AI Assistant)
+// R2-UI-WORKER v8.9.8 (Critical Bug Fix & UX Polish by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (BUG FIX) FOOTER VISIBILITY: Fixed a critical regression where the login page
-//   footer was incorrectly displayed on the main application view. The footer is
-//   now correctly scoped to the login page only.
-// - (BUG FIX) THEME TOGGLE VISIBILITY: Fixed a related bug where the floating
-//   theme toggle on the login page was unintentionally hidden.
-// - All other features and refinements from v8.9.4 are maintained.
+// - (CRITICAL BUG FIX) DIALOG ACTIONS RESTORED: Fixed a major regression where bulk
+//   delete and logout actions were non-functional due to an event bubbling issue
+//   with the custom dialog. Added `e.stopPropagation()` to relevant event listeners
+//   to fix the issue. All dialog-based actions now work correctly.
+// - (UX POLISH) UNIFIED LOGOUT DIALOG: The logout action now also uses the custom
+//   confirmation dialog, replacing the native browser alert for a consistent UI.
+// - All other features and refinements from v8.9.7 are maintained.
 // =================================================================================
 
 export default {
@@ -366,8 +367,12 @@ export default {
     .dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); z-index: 2000; display: none; width: 90%; max-width: 400px; box-sizing: border-box; }
     .dialog.show { display: block; }
     .dialog h3 { margin-top: 0; color: var(--text-color); }
+    .dialog p { word-break: break-all; margin: 15px 0; }
     .dialog input, .dialog select { width: 100%; box-sizing: border-box; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--text-color); }
     .dialog-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+    .dialog-buttons button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .dialog-buttons .confirm-btn { background-color: var(--c-error); color: white; }
+    .dialog-buttons .cancel-btn { background-color: var(--border-color); color: var(--text-color); }
     
     #progress-bar-container {
       position: fixed;
@@ -480,7 +485,6 @@ export default {
 </head>
 <body>
 
-  <!-- The header is now hidden by default and managed by JS -->
   <header class="page-header hidden">
     <div class="logo-title-group">
       <span class="logo">☁️</span>
@@ -491,17 +495,25 @@ export default {
     </button>
   </header>
 
-  <!-- The global theme toggle is also hidden by default and managed by JS -->
   <button class="theme-toggle hidden" id="global-theme-toggle" title="切换亮/暗模式"><span class="sun">☀️</span><span class="moon hidden">🌙</span></button>
 
   <div class="dialog" id="rename-dialog">
-    <h3>重命名</h3><input type="text" id="new-filename" placeholder="新名称"><div class="dialog-buttons"><button id="rename-cancel">取消</button><button id="rename-confirm">确认</button></div>
+    <h3>重命名</h3><input type="text" id="new-filename" placeholder="新名称"><div class="dialog-buttons"><button class="cancel-btn" id="rename-cancel">取消</button><button class="confirm-btn" id="rename-confirm" style="background-color: var(--c-primary);">确认</button></div>
   </div>
   <div class="dialog" id="create-folder-dialog">
-    <h3>新建文件夹</h3><input type="text" id="new-folder-name" placeholder="文件夹名称 (不能包含'/')"><div class="dialog-buttons"><button id="create-folder-cancel">取消</button><button id="create-folder-confirm">确认</button></div>
+    <h3>新建文件夹</h3><input type="text" id="new-folder-name" placeholder="文件夹名称 (不能包含'/')"><div class="dialog-buttons"><button class="cancel-btn" id="create-folder-cancel">取消</button><button class="confirm-btn" id="create-folder-confirm" style="background-color: var(--c-primary);">确认</button></div>
   </div>
   <div class="dialog" id="move-dialog">
-    <h3>移动项目</h3><p id="move-item-name" style="word-break: break-all; font-size: 0.9em; color: var(--text-light);"></p><label for="folder-destination">选择目标文件夹:</label><select id="folder-destination"></select><div class="dialog-buttons"><button id="move-cancel">取消</button><button id="move-confirm">确认</button></div>
+    <h3>移动项目</h3><p id="move-item-name"></p><label for="folder-destination">选择目标文件夹:</label><select id="folder-destination"></select><div class="dialog-buttons"><button class="cancel-btn" id="move-cancel">取消</button><button class="confirm-btn" id="move-confirm" style="background-color: var(--c-primary);">确认</button></div>
+  </div>
+  
+  <div class="dialog" id="confirmation-dialog">
+    <h3 id="confirmation-title"></h3>
+    <p id="confirmation-message"></p>
+    <div class="dialog-buttons">
+      <button class="cancel-btn" id="confirmation-cancel">取消</button>
+      <button class="confirm-btn" id="confirmation-confirm">确认</button>
+    </div>
   </div>
 
   <svg class="hidden"><defs>
@@ -585,8 +597,6 @@ export default {
       <button id="cancel-upload-button" title="取消上传">&times;</button>
   </div>
 
-
-  <!-- The footer is also hidden by default and managed by JS -->
   <footer class="page-footer hidden">
     Copyright © 2025 <a href="https://github.com/6otho/Cloudflare-for-R2" target="_blank" rel="noopener noreferrer">CLOUDFLARE-R2</a> . All Rights Reserved.
   </footer>
@@ -616,6 +626,11 @@ document.addEventListener('DOMContentLoaded', () => {
     progressBar: document.getElementById('progress-bar'),
     progressText: document.getElementById('progress-text'),
     cancelUploadButton: document.getElementById('cancel-upload-button'),
+    confirmationDialog: document.getElementById('confirmation-dialog'),
+    confirmationTitle: document.getElementById('confirmation-title'),
+    confirmationMessage: document.getElementById('confirmation-message'),
+    confirmationConfirm: document.getElementById('confirmation-confirm'),
+    confirmationCancel: document.getElementById('confirmation-cancel'),
     password: '', files: [], imageFiles: [], currentImageIndex: -1, 
     theme: localStorage.getItem('theme') || 'light',
     viewMode: localStorage.getItem('viewMode') || 'grid',
@@ -779,8 +794,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (G.viewMode === 'grid') { document.querySelectorAll('.video-thumbnail-placeholder').forEach(imgPlaceholder => { const key = imgPlaceholder.dataset.videoKey; generateVideoThumbnail(key) .then(thumbSrc => { imgPlaceholder.src = thumbSrc; }) .catch(err => { console.error(\`Failed to generate thumbnail for \${key}:\`, err); const iconContainer = imgPlaceholder.parentElement; if(iconContainer) { iconContainer.innerHTML = '<svg><use xlink:href="#icon-video"></use></svg>'; } }); }); }
     updateSortUI();
   };
+  
+  const showConfirmationDialog = (title, message) => {
+    return new Promise(resolve => {
+        G.confirmationTitle.textContent = title;
+        G.confirmationMessage.innerHTML = message;
+        G.confirmationDialog.classList.add('show');
 
-  const handleFileAction = (action, key) => { G.currentFileKey = key; G.keysToMove = []; switch(action) { case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break; case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break; case 'move': const folders = getFolderList(); G.folderDestination.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); }); G.moveItemName.textContent = \`移动: \${key}\`; G.moveDialog.classList.add('show'); break; case 'copy-link': navigator.clipboard.writeText(\`\${window.location.origin}/\${encodeURIComponent(key)}\`).then(() => showToast('链接已复制')).catch(err => showToast('复制失败: ' + err, 'error')); break; case 'delete': if (confirm(\`确定删除 "\${key}" 吗？\`)) { handleDelete([key]); } break; } };
+        const confirmHandler = () => {
+            G.confirmationDialog.classList.remove('show');
+            cleanup();
+            resolve(true);
+        };
+
+        const cancelHandler = () => {
+            G.confirmationDialog.classList.remove('show');
+            cleanup();
+            resolve(false);
+        };
+
+        const cleanup = () => {
+            G.confirmationConfirm.removeEventListener('click', confirmHandler);
+            G.confirmationCancel.removeEventListener('click', cancelHandler);
+        };
+        
+        G.confirmationConfirm.addEventListener('click', confirmHandler, { once: true });
+        G.confirmationCancel.addEventListener('click', cancelHandler, { once: true });
+    });
+  };
+
+  const handleFileAction = async (action, key) => { G.currentFileKey = key; G.keysToMove = []; switch(action) { case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break; case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break; case 'move': const folders = getFolderList(); G.folderDestination.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); }); G.moveItemName.textContent = \`移动: \${key}\`; G.moveDialog.classList.add('show'); break; case 'copy-link': navigator.clipboard.writeText(\`\${window.location.origin}/\${encodeURIComponent(key)}\`).then(() => showToast('链接已复制')).catch(err => showToast('复制失败: ' + err, 'error')); break; case 'delete': if (await showConfirmationDialog('确认删除', \`确定删除 "\${key}" 吗？<br>此操作不可恢复。\`)) { await _performDelete([key]); } break; } };
   const moveOrRenameFile = async (oldKey, newKey) => { if (!newKey || newKey === oldKey) { return; } await apiCall('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldKey, newKey }) }); };
   const handleRename = async () => { const oldKey = G.currentFileKey; const newName = G.newFilename.value.trim(); G.renameDialog.classList.remove('show'); if (!newName) return; const isFolder = oldKey.endsWith('/'); const newKey = G.currentPath + newName + (isFolder ? '/' : ''); try { await moveOrRenameFile(oldKey, newKey); showToast(\`操作成功: "\${newKey}"\`, 'success'); await refreshFileList(); } catch(error) { showToast(\`操作失败: \${error.message}\`, 'error'); } };
   const handleMove = async () => { const oldKey = G.currentFileKey; if (!oldKey) return; const destination = G.folderDestination.value; G.moveDialog.classList.remove('show'); const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop(); const newKey = destination + filename; try { await moveOrRenameFile(oldKey, newKey); showToast(\`成功移动到: "\${newKey}"\`, 'success'); await refreshFileList(); } catch (error) { showToast(\`移动失败: \${error.message}\`, 'error'); } };
@@ -829,17 +872,15 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) { console.error(error); showToast('刷新列表失败', 'error'); }
   };
   
-  // *** CORRECTED LOGIC FOR VIEW SWITCHING ***
   const handleLogin = async () => {
     const pw = G.passwordInput.value; if (!pw) return; G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
     try { 
       G.currentPath = getPathFromHash();
       await apiCall('/api/list'); localStorage.setItem('r2-password', pw);
       
-      // Switch to App View
       G.pageHeader.classList.remove('hidden'); 
-      G.themeToggle.classList.add('hidden'); // Hide floating toggle
-      G.pageFooter.classList.add('hidden'); // Hide footer
+      G.themeToggle.classList.add('hidden');
+      G.pageFooter.classList.add('hidden');
       G.loginView.classList.add('hidden'); 
       G.appView.classList.remove('hidden'); 
       
@@ -854,7 +895,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const handleLogout = () => { if (confirm('您确定要登出吗？')) { localStorage.removeItem('r2-password'); location.hash = ''; location.reload(); } };
+  const handleLogout = async () => {
+    if (await showConfirmationDialog('确认登出', '您确定要登出吗？')) {
+        localStorage.removeItem('r2-password'); 
+        location.hash = ''; 
+        location.reload();
+    }
+  };
   
   const showProgressBar = () => {
       updateProgressBar(0, 'primary', '准备上传...');
@@ -897,13 +944,8 @@ document.addEventListener('DOMContentLoaded', () => {
       G.uploadState.cancelled = true;
       G.uploadState.activeXHRs.forEach(xhr => xhr.abort());
       G.uploadState.activeXHRs = [];
-      G.uploadState.active = false;
-      
-      updateProgressBar(100, 'error', '上传已取消');
-      showToast('上传已取消', 'accent');
-      setTimeout(hideProgressBar, 2000);
   };
-
+  
   const handleUpload = async (files) => {
     if (G.uploadState.active) { showToast("已有上传任务在进行中。", 'accent', 2000); return; }
     
@@ -929,6 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressTracker = new Array(filesArray.length).fill(0);
     
     const updateOverallProgress = () => {
+        if(G.uploadState.cancelled) return;
         const totalLoaded = progressTracker.reduce((acc, p) => acc + p, 0);
         const percent = totalSize > 0 ? Math.round((totalLoaded / totalSize) * 100) : 0;
         updateProgressBar(percent);
@@ -946,19 +989,27 @@ document.addEventListener('DOMContentLoaded', () => {
             return uploadFileWithProgress(file, uploadKey, onProgress);
         });
 
-        await Promise.all(uploadPromises);
-        
-        if (!G.uploadState.cancelled) {
-          updateProgressBar(100, 'success', '上传成功！');
-          showToast(\`\${filesArray.length} 个文件全部上传成功！\`, 'success');
-          await refreshFileList();
+        const results = await Promise.allSettled(uploadPromises);
+
+        if (G.uploadState.cancelled) {
+            updateProgressBar(100, 'error', '上传已取消');
+            showToast('上传已取消', 'accent');
+        } else {
+            const failedUploads = results.filter(r => r.status === 'rejected');
+            if (failedUploads.length > 0) {
+                 updateProgressBar(100, 'error', \`部分上传失败 (\${failedUploads.length}/\${results.length})\`);
+                 showToast(\`\${failedUploads.length} 个文件上传失败\`, 'error');
+            } else {
+                updateProgressBar(100, 'success', '上传成功！');
+                showToast(\`\${filesArray.length} 个文件全部上传成功！\`, 'success');
+            }
+            await refreshFileList();
         }
         
     } catch (error) {
         if (!G.uploadState.cancelled) {
-          showToast(\`上传失败: \${error.message}\`, 'error', 5000);
-          console.error("Upload failed:", error);
-          updateProgressBar(100, 'error', '上传失败');
+          showToast(\`上传异常: \${error.message}\`, 'error', 5000);
+          updateProgressBar(100, 'error', '上传异常');
         }
     } finally {
         setTimeout(hideProgressBar, 2000);
@@ -968,18 +1019,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   
-  const handleDelete = async (keys) => {
-    if (!keys || keys.length === 0) keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
-    if (keys.length === 0) { showToast("请先选择要删除的项目", 'accent'); return; }
-    if (!confirm(\`你确定要删除选中的 \${keys.length} 个项目吗？此操作不可恢复。\`)) return;
-    try { await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) }); showToast(\`成功删除 \${keys.length} 个项目\`, 'success'); await refreshFileList(); } catch (error) { showToast(\`删除失败: \${error.message}\`, 'error'); }
+  const _performDelete = async (keys) => {
+      try { 
+          await apiCall('/api/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ keys }) }); 
+          showToast(\`成功删除 \${keys.length} 个项目\`, 'success'); 
+          await refreshFileList(); 
+      } catch (error) { 
+          showToast(\`删除失败: \${error.message}\`, 'error'); 
+      }
+  };
+  
+  const handleDelete = async () => {
+    const keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
+    if (keys.length === 0) { 
+        showToast("请先选择要删除的项目", 'accent'); 
+        return; 
+    }
+    if (await showConfirmationDialog('确认删除', \`你确定要删除选中的 \${keys.length} 个项目吗？<br>此操作不可恢复。\`)) {
+        await _performDelete(keys);
+    }
   };
 
   const setupEventListeners = () => {
     G.themeToggle.addEventListener('click', toggleTheme);
     G.headerThemeToggle.addEventListener('click', toggleTheme);
     G.loginButton.addEventListener('click', handleLogin);
-    G.logoutButton.addEventListener('click', handleLogout);
+    
+    // *** FIX: Added e.stopPropagation() to prevent event bubbling ***
+    G.logoutButton.addEventListener('click', e => {
+      e.stopPropagation();
+      handleLogout();
+    });
+    G.deleteButton.addEventListener('click', e => {
+      e.stopPropagation();
+      handleDelete();
+    });
+
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
     
     G.cancelUploadButton.addEventListener('click', handleCancelUpload);
@@ -989,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     G.selectAllButton.addEventListener('click', () => toggleSelectAll(true));
     G.deselectAllButton.addEventListener('click', () => toggleSelectAll(false));
-    G.deleteButton.addEventListener('click', () => handleDelete());
+    
     G.moveSelectedButton.addEventListener('click', () => {
         const selectedKeys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
         if (selectedKeys.length === 0) { showToast("请先选择要移动的项目", 'accent'); return; }
@@ -1006,15 +1081,16 @@ document.addEventListener('DOMContentLoaded', () => {
         else G.mobileSelectMenu.classList.remove('show');
     });
 
-    G.mobileSelectMenu.addEventListener('click', (e) => {
+    G.mobileSelectMenu.addEventListener('click', async (e) => {
+        e.stopPropagation(); // Also prevent bubbling here
         const target = e.target.closest('.menu-item');
         if (!target || target.classList.contains('disabled')) return;
         const action = target.dataset.action;
+        G.mobileSelectMenu.classList.remove('show');
         switch(action) {
             case 'move-selected': G.moveSelectedButton.click(); break;
-            case 'delete-selected': handleDelete(); break; 
+            case 'delete-selected': await handleDelete(); break; 
         }
-        G.mobileSelectMenu.classList.remove('show');
     });
 
     G.dropZone.addEventListener('click', () => G.fileInput.click());
@@ -1135,6 +1211,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (G.mobileSelectMenu.classList.contains('show') && !e.target.closest('#mobile-select-menu-trigger')) {
             G.mobileSelectMenu.classList.remove('show');
         }
+        if(G.confirmationDialog.classList.contains('show') && !e.target.closest('.dialog')) {
+            G.confirmationCancel.click();
+        }
     });
     
     window.addEventListener('resize', () => {
@@ -1143,7 +1222,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
   
-  // *** CORRECTED LOGIC FOR INITIALIZATION ***
   const init = () => {
     applyTheme();
     const savedPassword = localStorage.getItem('r2-password');
@@ -1151,11 +1229,10 @@ document.addEventListener('DOMContentLoaded', () => {
       G.passwordInput.value = savedPassword;
       handleLogin();
     } else {
-      // Setup for Login View
       G.currentPath = getPathFromHash();
       G.pageHeader.classList.remove('hidden');
-      G.themeToggle.classList.remove('hidden'); // Show floating toggle
-      G.pageFooter.classList.remove('hidden'); // Show footer
+      G.themeToggle.classList.remove('hidden');
+      G.pageFooter.classList.remove('hidden');
     }
     applyViewMode();
     setupEventListeners();
