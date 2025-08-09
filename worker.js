@@ -1,14 +1,13 @@
 // =================================================================================
-// R2-UI-WORKER v8.8 (Critical Upload Fix by AI Assistant)
+// R2-UI-WORKER v8.9.5 (Bug Fix by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (CRITICAL FIX) MULTI-FILE UPLOAD: Rewrote the entire upload handler to use a
-//   parallel `Promise.all` approach. This fixes a major bug where only the first
-//   file in a selection would upload. Multiple files now upload concurrently and reliably.
-// - (CRITICAL FIX) ACCURATE SUCCESS COUNT: The success toast notification now
-//   correctly displays the total number of files uploaded in the batch.
-// - (PERFORMANCE) Uploads are now significantly faster due to parallel processing.
-// - All other features (SPA routing, file size display, bottom bar) are maintained.
+// - (BUG FIX) FOOTER VISIBILITY: Fixed a critical regression where the login page
+//   footer was incorrectly displayed on the main application view. The footer is
+//   now correctly scoped to the login page only.
+// - (BUG FIX) THEME TOGGLE VISIBILITY: Fixed a related bug where the floating
+//   theme toggle on the login page was unintentionally hidden.
+// - All other features and refinements from v8.9.4 are maintained.
 // =================================================================================
 
 export default {
@@ -283,7 +282,7 @@ export default {
     .login-box input { width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
     .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; }
     #login-error { color: var(--c-error); margin-top: 10px; height: 20px; }
-    #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; padding-top: 92px; }
+    #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; padding-top: 92px; padding-bottom: 40px; }
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
     header h1 { color: var(--c-primary); margin: 0; font-size: 1.8em; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -374,21 +373,72 @@ export default {
       position: fixed;
       bottom: 0;
       left: 0;
-      right: 0;
-      height: 3px;
+      width: 100%;
+      height: 22px;
+      background-color: var(--card-bg);
+      border-top: 1px solid var(--border-color);
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
       z-index: 9998;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
     }
-    #progress-bar-container.visible { opacity: 1; }
+    #progress-bar-container.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+    #progress-bar-wrapper {
+      position: relative;
+      flex-grow: 1;
+      height: 100%;
+      overflow: hidden;
+    }
     #progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
       height: 100%;
       width: 0%;
       background-color: var(--c-primary);
       transition: width 0.1s linear, background-color 0.2s;
     }
-    #progress-bar.success { background-color: var(--c-success); }
+    #progress-bar.success {
+      background-color: var(--c-success);
+    }
+    #progress-text {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0 15px;
+      z-index: 2;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 500;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+      white-space: nowrap;
+    }
+    #cancel-upload-button {
+      flex-shrink: 0;
+      width: 32px;
+      height: 100%;
+      background-color: var(--c-error);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 22px;
+      font-weight: bold;
+      transition: background-color 0.2s;
+    }
+    #cancel-upload-button:hover {
+      background-color: #d96377;
+    }
     
     .desktop-only, #bulk-actions-container { display: flex; }
     .mobile-only { display: none; }
@@ -430,6 +480,7 @@ export default {
 </head>
 <body>
 
+  <!-- The header is now hidden by default and managed by JS -->
   <header class="page-header hidden">
     <div class="logo-title-group">
       <span class="logo">☁️</span>
@@ -440,7 +491,8 @@ export default {
     </button>
   </header>
 
-  <button class="theme-toggle" id="global-theme-toggle" title="切换亮/暗模式"><span class="sun">☀️</span><span class="moon hidden">🌙</span></button>
+  <!-- The global theme toggle is also hidden by default and managed by JS -->
+  <button class="theme-toggle hidden" id="global-theme-toggle" title="切换亮/暗模式"><span class="sun">☀️</span><span class="moon hidden">🌙</span></button>
 
   <div class="dialog" id="rename-dialog">
     <h3>重命名</h3><input type="text" id="new-filename" placeholder="新名称"><div class="dialog-buttons"><button id="rename-cancel">取消</button><button id="rename-confirm">确认</button></div>
@@ -526,9 +578,15 @@ export default {
   </div>
   
   <div id="progress-bar-container">
-      <div id="progress-bar"></div>
+      <div id="progress-bar-wrapper">
+          <div id="progress-text"></div>
+          <div id="progress-bar"></div>
+      </div>
+      <button id="cancel-upload-button" title="取消上传">&times;</button>
   </div>
 
+
+  <!-- The footer is also hidden by default and managed by JS -->
   <footer class="page-footer hidden">
     Copyright © 2025 <a href="https://github.com/6otho/Cloudflare-for-R2" target="_blank" rel="noopener noreferrer">CLOUDFLARE-R2</a> . All Rights Reserved.
   </footer>
@@ -556,10 +614,18 @@ document.addEventListener('DOMContentLoaded', () => {
     deselectAllButton: document.getElementById('deselect-all-button'),
     progressBarContainer: document.getElementById('progress-bar-container'),
     progressBar: document.getElementById('progress-bar'),
-    password: '', files: [], imageFiles: [], currentImageIndex: -1, theme: localStorage.getItem('theme') || 'dark', viewMode: localStorage.getItem('viewMode') || 'grid',
+    progressText: document.getElementById('progress-text'),
+    cancelUploadButton: document.getElementById('cancel-upload-button'),
+    password: '', files: [], imageFiles: [], currentImageIndex: -1, 
+    theme: localStorage.getItem('theme') || 'light',
+    viewMode: localStorage.getItem('viewMode') || 'grid',
     isAllSelected: false, currentFileKey: null, currentMenu: null, currentPath: '', keysToMove: [], searchTerm: '', sortBy: 'uploaded', sortDirection: 'desc',
     sortCycle: ['uploaded', 'name', 'size'], sortDisplayNames: { uploaded: '上传时间', name: '名称', size: '大小' },
-    uploadState: { totalSize: 0, uploadedSize: 0, active: false }
+    uploadState: { 
+      active: false, 
+      cancelled: false, 
+      activeXHRs: [] 
+    }
   };
 
   const showToast = (message, type = 'accent', duration = 3000) => {
@@ -763,50 +829,79 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) { console.error(error); showToast('刷新列表失败', 'error'); }
   };
   
+  // *** CORRECTED LOGIC FOR VIEW SWITCHING ***
   const handleLogin = async () => {
     const pw = G.passwordInput.value; if (!pw) return; G.password = pw; G.loginButton.textContent = "验证中..."; G.loginButton.disabled = true;
     try { 
       G.currentPath = getPathFromHash();
       await apiCall('/api/list'); localStorage.setItem('r2-password', pw);
-      if (G.pageHeader) G.pageHeader.classList.remove('hidden'); 
-      if (G.themeToggle) G.themeToggle.classList.add('hidden');
-      if (G.pageFooter) G.pageFooter.classList.add('hidden');
-      G.loginView.classList.add('hidden'); G.appView.classList.remove('hidden'); 
+      
+      // Switch to App View
+      G.pageHeader.classList.remove('hidden'); 
+      G.themeToggle.classList.add('hidden'); // Hide floating toggle
+      G.pageFooter.classList.add('hidden'); // Hide footer
+      G.loginView.classList.add('hidden'); 
+      G.appView.classList.remove('hidden'); 
+      
       await refreshFileList(); 
-    } catch (error) { document.getElementById('login-error').textContent = '密码错误'; setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); }
-    finally { G.loginButton.textContent = "授 权 访 问"; G.loginButton.disabled = false; }
+    } catch (error) { 
+      document.getElementById('login-error').textContent = '密码错误'; 
+      setTimeout(()=> document.getElementById('login-error').textContent = '', 3000); 
+    }
+    finally { 
+      G.loginButton.textContent = "授 权 访 问"; 
+      G.loginButton.disabled = false; 
+    }
   };
 
   const handleLogout = () => { if (confirm('您确定要登出吗？')) { localStorage.removeItem('r2-password'); location.hash = ''; location.reload(); } };
   
-  const showProgressBar = () => G.progressBarContainer.classList.add('visible');
+  const showProgressBar = () => {
+      updateProgressBar(0, 'primary', '准备上传...');
+      G.progressBarContainer.classList.add('visible');
+  };
   const hideProgressBar = () => {
       G.progressBarContainer.classList.remove('visible');
-      setTimeout(() => { G.progressBar.style.width = '0%'; G.progressBar.classList.remove('success'); }, 300);
   };
-  const updateProgressBar = (percent, state = 'primary') => {
+  const updateProgressBar = (percent, state = 'primary', text = '') => {
       G.progressBar.style.width = percent + '%';
+      G.progressText.textContent = text || \`正在上传... \${percent}%\`;
       G.progressBar.className = 'progress-bar';
       if(state === 'success') G.progressBar.classList.add('success');
   };
-  
+
   const uploadFileWithProgress = (file, key, onProgress) => {
-      return new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.upload.addEventListener('progress', e => {
-              if (e.lengthComputable) onProgress(e.loaded);
-          });
-          xhr.addEventListener('load', () => {
-              if (xhr.status >= 200 && xhr.status < 300) resolve(file.size);
-              else reject(new Error(xhr.responseText || '上传失败，状态码: ' + xhr.status));
-          });
-          xhr.addEventListener('error', () => reject(new Error('上传时发生网络错误')));
-          xhr.addEventListener('abort', () => reject(new Error('上传已取消')));
-          xhr.open('PUT', \`/api/upload/\${encodeURIComponent(key)}\`, true);
-          xhr.setRequestHeader('x-auth-password', G.password);
-          xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-          xhr.send(file);
-      });
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) onProgress(e.loaded);
+        });
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve(file.size);
+            else reject(new Error(xhr.responseText || '上传失败，状态码: ' + xhr.status));
+        });
+        xhr.addEventListener('error', () => reject(new Error('上传时发生网络错误')));
+        xhr.addEventListener('abort', () => reject(new Error('上传已取消')));
+        
+        xhr.open('PUT', \`/api/upload/\${encodeURIComponent(key)}\`, true);
+        xhr.setRequestHeader('x-auth-password', G.password);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        
+        G.uploadState.activeXHRs.push(xhr);
+        xhr.send(file);
+    });
+  };
+
+  const handleCancelUpload = () => {
+      if (!G.uploadState.active) return;
+      G.uploadState.cancelled = true;
+      G.uploadState.activeXHRs.forEach(xhr => xhr.abort());
+      G.uploadState.activeXHRs = [];
+      G.uploadState.active = false;
+      
+      updateProgressBar(100, 'error', '上传已取消');
+      showToast('上传已取消', 'accent');
+      setTimeout(hideProgressBar, 2000);
   };
 
   const handleUpload = async (files) => {
@@ -816,7 +911,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filesArray.length === 0) return;
     
     G.uploadState.active = true;
-    
+    G.uploadState.cancelled = false;
+    G.uploadState.activeXHRs = [];
+
     const MAX_SIZE = 100 * 1024 * 1024;
     let totalSize = 0;
     
@@ -829,7 +926,6 @@ document.addEventListener('DOMContentLoaded', () => {
         totalSize += file.size;
     }
     
-    G.uploadState.totalSize = totalSize;
     const progressTracker = new Array(filesArray.length).fill(0);
     
     const updateOverallProgress = () => {
@@ -838,7 +934,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateProgressBar(percent);
     };
     
-    updateProgressBar(0);
     showProgressBar();
 
     try {
@@ -853,19 +948,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         await Promise.all(uploadPromises);
         
-        updateProgressBar(100, 'success');
-        showToast(\`\${filesArray.length} 个文件全部上传成功！\`, 'success');
-        await refreshFileList();
+        if (!G.uploadState.cancelled) {
+          updateProgressBar(100, 'success', '上传成功！');
+          showToast(\`\${filesArray.length} 个文件全部上传成功！\`, 'success');
+          await refreshFileList();
+        }
         
     } catch (error) {
-        showToast(\`上传失败: \${error.message}\`, 'error', 5000);
-        console.error("Upload failed:", error);
+        if (!G.uploadState.cancelled) {
+          showToast(\`上传失败: \${error.message}\`, 'error', 5000);
+          console.error("Upload failed:", error);
+          updateProgressBar(100, 'error', '上传失败');
+        }
     } finally {
-        setTimeout(hideProgressBar, 500);
+        setTimeout(hideProgressBar, 2000);
         G.uploadState.active = false;
+        G.uploadState.cancelled = false;
+        G.uploadState.activeXHRs = [];
     }
   };
-
+  
   const handleDelete = async (keys) => {
     if (!keys || keys.length === 0) keys = Array.from(document.querySelectorAll('.checkbox:checked')).map(cb => cb.dataset.key);
     if (keys.length === 0) { showToast("请先选择要删除的项目", 'accent'); return; }
@@ -880,6 +982,8 @@ document.addEventListener('DOMContentLoaded', () => {
     G.logoutButton.addEventListener('click', handleLogout);
     G.passwordInput.addEventListener('keypress', e => e.key === 'Enter' && handleLogin());
     
+    G.cancelUploadButton.addEventListener('click', handleCancelUpload);
+
     G.createFolderButton.addEventListener('click', () => { G.newFolderName.value = ''; G.createFolderDialog.classList.add('show'); });
     G.viewToggleButton.addEventListener('click', toggleViewMode);
     
@@ -914,10 +1018,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     G.dropZone.addEventListener('click', () => G.fileInput.click());
-    // --- CRITICAL FIX: Correctly handle async upload and input clearing ---
     G.fileInput.addEventListener('change', async () => {
       await handleUpload(G.fileInput.files);
-      G.fileInput.value = ''; // Clear only AFTER upload is complete
+      G.fileInput.value = '';
     });
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => document.body.addEventListener(e, p => p.preventDefault()));
     ['dragenter', 'dragover'].forEach(eventName => G.dropZone.addEventListener(eventName, () => G.dropZone.classList.add('dragging')));
@@ -1040,6 +1143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
   
+  // *** CORRECTED LOGIC FOR INITIALIZATION ***
   const init = () => {
     applyTheme();
     const savedPassword = localStorage.getItem('r2-password');
@@ -1047,10 +1151,11 @@ document.addEventListener('DOMContentLoaded', () => {
       G.passwordInput.value = savedPassword;
       handleLogin();
     } else {
+      // Setup for Login View
       G.currentPath = getPathFromHash();
-      if (G.pageHeader) G.pageHeader.classList.remove('hidden');
-      if (G.themeToggle) G.themeToggle.classList.add('hidden');
-      if (G.pageFooter) G.pageFooter.classList.remove('hidden');
+      G.pageHeader.classList.remove('hidden');
+      G.themeToggle.classList.remove('hidden'); // Show floating toggle
+      G.pageFooter.classList.remove('hidden'); // Show footer
     }
     applyViewMode();
     setupEventListeners();
