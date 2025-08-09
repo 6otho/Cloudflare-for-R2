@@ -229,7 +229,7 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/%E5%9C%A8%E7%BA%BF%E5%9B%BE%2F0260eb1c1d2b11bcb9e94a8ed2a2614b.jpg">
+  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/Url-img%2Fcloud-img.jpg">
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
