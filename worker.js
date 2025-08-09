@@ -1,14 +1,12 @@
 // =================================================================================
-// R2-UI-WORKER v8.9.8 (Critical Bug Fix & UX Polish by AI Assistant)
+// R2-UI-WORKER v9.0.7 (Final Adaptive UI)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (CRITICAL BUG FIX) DIALOG ACTIONS RESTORED: Fixed a major regression where bulk
-//   delete and logout actions were non-functional due to an event bubbling issue
-//   with the custom dialog. Added `e.stopPropagation()` to relevant event listeners
-//   to fix the issue. All dialog-based actions now work correctly.
-// - (UX POLISH) UNIFIED LOGOUT DIALOG: The logout action now also uses the custom
-//   confirmation dialog, replacing the native browser alert for a consistent UI.
-// - All other features and refinements from v8.9.7 are maintained.
+// - (ADAPTIVE UI FIX) On mobile, the "Create Folder" button text now adaptively
+//   shortens to "Create" when bulk action mode is active. This prevents other
+//   buttons (like the sort direction arrow) from being pushed out of view on
+//   smaller screens, ensuring a consistent and clean UI.
+// - This version represents the definitive, stable, and unified user experience.
 // =================================================================================
 
 export default {
@@ -247,7 +245,7 @@ export default {
     }
     html[data-theme='light'] {
       --bg-color: var(--c-light-bg); --card-bg: var(--c-light-card); --text-color: var(--c-light-text); --text-light: var(--c-light-text-light); --border-color: var(--c-light-border);
-      --ink-blue: var(--c-ink-blue-light); --deep-blue: var(--c-deep-blue-light); --uploader-bg: rgba(122, 162, 247, 0.1);
+      --ink-blue: var(--c-ink-blue-light); --deep-blue: var(--c-deep-blue-dark); --uploader-bg: rgba(122, 162, 247, 0.1);
     }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; 
@@ -287,15 +285,18 @@ export default {
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
     header h1 { color: var(--c-primary); margin: 0; font-size: 1.8em; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .actions button, .actions .menu-button-wrapper button, #bulk-actions-container button {
+    .actions button, #bulk-actions-container button {
       height: 36px; padding: 0 12px; font-size: 0.9em; display: flex; align-items: center; justify-content: center;
       background: var(--card-bg); color: var(--text-light); border: 1px solid var(--border-color);
       border-radius: 8px; cursor: pointer; transition: all 0.2s; box-sizing: border-box;
+      white-space: nowrap;
     }
-    .actions button:hover, .actions button.active, .actions .menu-button-wrapper button:hover, #bulk-actions-container button:hover { border-color: var(--c-primary); color: var(--c-primary); }
+    .actions button:hover, #bulk-actions-container button:hover { border-color: var(--c-primary); color: var(--c-primary); }
+    .actions button:disabled { cursor: not-allowed; opacity: 0.5; }
     #view-toggle-button { width: 36px; padding: 0; }
     #view-toggle-button svg { width: 20px; height: 20px; }
-    #select-all-button, #deselect-all-button, #mobile-select-menu-trigger { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
+    #select-all-button, #deselect-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
+    #bulk-actions-container { display: flex; gap: 10px; align-items: center; }
     #bulk-actions-container #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #bulk-actions-container #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
     .sort-button-group { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;}
@@ -445,16 +446,7 @@ export default {
       background-color: #d96377;
     }
     
-    .desktop-only, #bulk-actions-container { display: flex; }
-    .mobile-only { display: none; }
-    @media (min-width: 768px) {
-      .login-box { max-width: 420px; padding: 50px; }
-      .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-      .actions .desktop-only, #bulk-actions-container { gap: 10px; align-items: center; }
-    }
     @media (max-width: 767px) {
-      .desktop-only { display: none !important; }
-      .mobile-only { display: block; }
       #app-view { padding-top: 82px; }
       .page-header { flex-direction: row; align-items: center; padding: 0 15px; height: 60px;}
       .page-header .logo { font-size: 2em; margin-right: 8px;}
@@ -463,7 +455,8 @@ export default {
       .page-footer { font-size: 0.7em; }
       header { flex-direction: column; align-items: flex-start; gap: 20px; }
       .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;}
-      .actions button, .actions .menu-button-wrapper button, .actions .sort-button-group button { height: 34px; padding: 0 10px; font-size: 13px; line-height: 1; white-space: nowrap;}
+      #bulk-actions-container { gap: 8px; }
+      .actions button, #bulk-actions-container button { height: 34px; padding: 0 10px; font-size: 13px; line-height: 1; }
       #view-toggle-button, .sort-button-group button:last-child { width: 34px; padding: 0; }
       .grid-view .info { padding: 10px 5px; }
       .grid-view .filename { font-size: 0.8em; }
@@ -474,7 +467,8 @@ export default {
     }
     @media (max-width: 420px) {
       .actions { gap: 5px; }
-      .actions button, .actions .menu-button-wrapper button, .actions .sort-button-group button { padding: 0 8px; font-size: 12px; }
+      #bulk-actions-container { gap: 5px; }
+      .actions button, #bulk-actions-container button { padding: 0 8px; font-size: 12px; }
       #view-toggle-button, .sort-button-group button:last-child { width: 32px; }
       .grid-view .icon { height: 100px; }
       .grid-view .filename { font-size: 0.75em; }
@@ -550,26 +544,21 @@ export default {
       <h1>文件列表</h1>
       <div class="actions">
         <button id="view-toggle-button" title="切换视图"></button>
+        <button id="create-folder-button">新建文件夹</button>
         <div class="sort-button-group">
             <button id="sort-by-button"></button>
             <button id="sort-direction-button"></button>
         </div>
-        <button id="create-folder-button">新建文件夹</button>
-        <div class="desktop-only">
-          <button id="select-all-button">全选</button>
-          <div id="bulk-actions-container" class="hidden">
-              <button id="delete-button">删除选中</button>
-              <button id="move-selected-button">移动选中</button>
-              <button id="deselect-all-button">取消全选</button>
-          </div>
+        
+        <div id="select-all-container">
+            <button id="select-all-button">全选</button>
         </div>
-        <div class="mobile-only menu-button-wrapper">
-          <button id="mobile-select-menu-trigger">全选</button>
-          <div id="mobile-select-menu" class="menu-items">
-            <div class="menu-item disabled" data-action="move-selected">移动选中</div>
-            <div class="menu-item disabled danger" data-action="delete-selected">删除选中</div>
-          </div>
+        <div id="bulk-actions-container" class="hidden">
+            <button id="delete-button">删除</button>
+            <button id="move-selected-button">移动</button>
+            <button id="deselect-all-button">取消</button>
         </div>
+
         <button id="logout-button">登出</button>
       </div>
     </header>
@@ -605,7 +594,9 @@ export default {
 document.addEventListener('DOMContentLoaded', () => {
   const G = {
     loginView: document.getElementById('login-view'), appView: document.getElementById('app-view'), fileContainer: document.getElementById('file-container'),
-    loginButton: document.getElementById('login-button'), deleteButton: document.getElementById('delete-button'), viewToggleButton: document.getElementById('view-toggle-button'), selectAllButton: document.getElementById('select-all-button'),
+    loginButton: document.getElementById('login-button'), deleteButton: document.getElementById('delete-button'), viewToggleButton: document.getElementById('view-toggle-button'), 
+    selectAllButton: document.getElementById('select-all-button'),
+    selectAllContainer: document.getElementById('select-all-container'),
     moveSelectedButton: document.getElementById('move-selected-button'), logoutButton: document.getElementById('logout-button'), passwordInput: document.getElementById('password-input'),
     fileInput: document.getElementById('file-input'), dropZone: document.getElementById('drop-zone'), lightbox: document.getElementById('lightbox'), lightboxImage: document.getElementById('lightbox-image'),
     lightboxClose: document.getElementById('lightbox-close'), lightboxPrev: document.getElementById('lightbox-prev'), lightboxNext: document.getElementById('lightbox-next'),
@@ -618,8 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
     videoPlayer: document.getElementById('video-player'), videoElement: document.getElementById('video-element'), videoClose: document.getElementById('video-close'),
     breadcrumb: document.getElementById('breadcrumb'), pageHeader: document.querySelector('.page-header'), pageFooter: document.querySelector('.page-footer'),
     searchInput: document.getElementById('search-input'), sortByButton: document.getElementById('sort-by-button'), sortDirectionButton: document.getElementById('sort-direction-button'),
-    mobileSelectMenuTrigger: document.getElementById('mobile-select-menu-trigger'),
-    mobileSelectMenu: document.getElementById('mobile-select-menu'),
     bulkActionsContainer: document.getElementById('bulk-actions-container'),
     deselectAllButton: document.getElementById('deselect-all-button'),
     progressBarContainer: document.getElementById('progress-bar-container'),
@@ -750,17 +739,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const updateBulkActionsState = () => {
-    const selectedCount = document.querySelectorAll('.checkbox:checked').length;
-    const isAnythingSelected = selectedCount > 0;
-    G.selectAllButton.classList.toggle('hidden', isAnythingSelected);
+    const isAnythingSelected = !!document.querySelector('.checkbox:checked');
+    G.selectAllContainer.classList.toggle('hidden', isAnythingSelected);
     G.bulkActionsContainer.classList.toggle('hidden', !isAnythingSelected);
-    const buttonText = isAnythingSelected ? '取消全选' : '全选';
-    G.mobileSelectMenuTrigger.textContent = buttonText;
-    const moveItem = G.mobileSelectMenu.querySelector('[data-action="move-selected"]');
-    const deleteItem = G.mobileSelectMenu.querySelector('[data-action="delete-selected"]');
-    moveItem.classList.toggle('disabled', !isAnythingSelected);
-    deleteItem.classList.toggle('disabled', !isAnythingSelected);
-    if (!isAnythingSelected) G.mobileSelectMenu.classList.remove('show');
+
+    // Adapt button text for mobile
+    if (window.innerWidth <= 767) {
+        G.createFolderButton.textContent = isAnythingSelected ? '新建' : '新建文件夹';
+    } else {
+        G.createFolderButton.textContent = '新建文件夹';
+    }
   };
   
   const updateSortUI = () => {
@@ -1045,7 +1033,6 @@ document.addEventListener('DOMContentLoaded', () => {
     G.headerThemeToggle.addEventListener('click', toggleTheme);
     G.loginButton.addEventListener('click', handleLogin);
     
-    // *** FIX: Added e.stopPropagation() to prevent event bubbling ***
     G.logoutButton.addEventListener('click', e => {
       e.stopPropagation();
       handleLogout();
@@ -1072,25 +1059,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const folders = getFolderList(); G.folderDestination.innerHTML = '';
         folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); });
         G.moveItemName.textContent = \`移动 \${G.keysToMove.length} 个项目\`; G.moveDialog.classList.add('show');
-    });
-
-    G.mobileSelectMenuTrigger.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleSelectAll(!G.isAllSelected);
-        if (G.isAllSelected) G.mobileSelectMenu.classList.add('show');
-        else G.mobileSelectMenu.classList.remove('show');
-    });
-
-    G.mobileSelectMenu.addEventListener('click', async (e) => {
-        e.stopPropagation(); // Also prevent bubbling here
-        const target = e.target.closest('.menu-item');
-        if (!target || target.classList.contains('disabled')) return;
-        const action = target.dataset.action;
-        G.mobileSelectMenu.classList.remove('show');
-        switch(action) {
-            case 'move-selected': G.moveSelectedButton.click(); break;
-            case 'delete-selected': await handleDelete(); break; 
-        }
     });
 
     G.dropZone.addEventListener('click', () => G.fileInput.click());
@@ -1208,15 +1176,13 @@ document.addEventListener('DOMContentLoaded', () => {
             G.currentMenu.closest('.file-item')?.classList.remove('menu-active');
             G.currentMenu = null;
         }
-        if (G.mobileSelectMenu.classList.contains('show') && !e.target.closest('#mobile-select-menu-trigger')) {
-            G.mobileSelectMenu.classList.remove('show');
-        }
         if(G.confirmationDialog.classList.contains('show') && !e.target.closest('.dialog')) {
             G.confirmationCancel.click();
         }
     });
     
     window.addEventListener('resize', () => {
+      updateBulkActionsState(); // Re-check button text on resize
       const isLoginPage = !G.loginView.classList.contains('hidden');
       if (isLoginPage) { G.themeToggle.classList.remove('hidden'); }
     });
