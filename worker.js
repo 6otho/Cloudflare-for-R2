@@ -1,12 +1,9 @@
 // =================================================================================
-// R2-UI-WORKER v9.0.7 (Final Adaptive UI)
+// R2-UI-WORKER v9.2.2 (UI/UX Cleanup)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (ADAPTIVE UI FIX) On mobile, the "Create Folder" button text now adaptively
-//   shortens to "Create" when bulk action mode is active. This prevents other
-//   buttons (like the sort direction arrow) from being pushed out of view on
-//   smaller screens, ensuring a consistent and clean UI.
-// - This version represents the definitive, stable, and unified user experience.
+// - (UI FIX) Removed the redundant theme toggle button from the login page. The header toggle is now the sole option.
+// - v9.2.1 changes (Corrected sort arrow SVG) are retained.
 // =================================================================================
 
 export default {
@@ -245,7 +242,7 @@ export default {
     }
     html[data-theme='light'] {
       --bg-color: var(--c-light-bg); --card-bg: var(--c-light-card); --text-color: var(--c-light-text); --text-light: var(--c-light-text-light); --border-color: var(--c-light-border);
-      --ink-blue: var(--c-ink-blue-light); --deep-blue: var(--c-deep-blue-dark); --uploader-bg: rgba(122, 162, 247, 0.1);
+      --ink-blue: var(--c-ink-blue-light); --deep-blue: var(--c-deep-blue-light); --uploader-bg: rgba(122, 162, 247, 0.1);
     }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; 
@@ -295,7 +292,11 @@ export default {
     .actions button:disabled { cursor: not-allowed; opacity: 0.5; }
     #view-toggle-button { width: 36px; padding: 0; }
     #view-toggle-button svg { width: 20px; height: 20px; }
-    #select-all-button, #deselect-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
+    #select-all-button, #bulk-actions-container #deselect-all-button {
+      background-color: var(--c-success);
+      color: #fff;
+      border-color: var(--c-success);
+    }
     #bulk-actions-container { display: flex; gap: 10px; align-items: center; }
     #bulk-actions-container #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #bulk-actions-container #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
@@ -452,7 +453,7 @@ export default {
       .page-header .logo { font-size: 2em; margin-right: 8px;}
       .page-header .project-name { font-size: 1.1em; }
       .theme-toggle-header { font-size: 18px; padding: 6px; }
-      .page-footer { font-size: 0.7em; }
+      .page-footer { font-size: 0.5em; }
       header { flex-direction: column; align-items: flex-start; gap: 20px; }
       .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;}
       #bulk-actions-container { gap: 8px; }
@@ -521,7 +522,7 @@ export default {
     <symbol id="icon-zip" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM9 18H7v-2h2v2zm0-4H7v-2h2v2zm0-4H7V8h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V8h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zM6 20V4h7v5h5v11H6z"/></symbol>
     <symbol id="icon-doc" viewBox="0 0 24 24"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM16 18H8v-2h8v2zm0-4H8v-2h8v2zm-3-4H8V8h5v2zM6 20V4h7v5h5v11H6z"/></symbol>
     <symbol id="icon-arrow-up" viewBox="0 0 24 24"><path fill="currentColor" d="M7 14l5-5l5 5H7z"/></symbol>
-    <symbol id="icon-arrow-down" viewBox="0 0 24 24"><path fill="currentColor" d="M7 10l5 5l5-5H7z"/></symbol>
+    <symbol id="icon-arrow-down" viewBox="0 0 24 24"><path fill="currentColor" d="M7 10l5 5 5-5H7z"/></symbol>
     <symbol id="icon-lock" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a2 2 0 0 0 2-2a2 2 0 0 0-2-2a2 2 0 0 0-2 2a2 2 0 0 0 2 2m6-9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a5 5 0 0 1 5-5a5 5 0 0 1 5 5v2h1m-6-5a3 3 0 0 0-3 3v2h6V6a3 3 0 0 0-3-3Z"/></symbol>
   </defs></svg>
 
@@ -573,7 +574,7 @@ export default {
   </div>
 
   <div id="lightbox" class="hidden"><button id="lightbox-close" class="lightbox-nav">&times;</button><button id="lightbox-prev" class="lightbox-nav">&#10094;</button><button id="lightbox-next" class="lightbox-nav">&#10095;</button><img id="lightbox-image" src="" alt="Image preview"></div>
-  <div id="video-player" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 5000;">
+  <div id="video-player" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 5001;">
     <button id="video-close" style="position: absolute; top: 20px; right: 20px; color: #fff; background: transparent; border: none; font-size: 2em; cursor: pointer; z-index: 5001;">&times;</button>
     <video id="video-element" controls style="max-width: 90%; max-height: 90%;" src=""></video>
   </div>
@@ -743,7 +744,6 @@ document.addEventListener('DOMContentLoaded', () => {
     G.selectAllContainer.classList.toggle('hidden', isAnythingSelected);
     G.bulkActionsContainer.classList.toggle('hidden', !isAnythingSelected);
 
-    // Adapt button text for mobile
     if (window.innerWidth <= 767) {
         G.createFolderButton.textContent = isAnythingSelected ? '新建' : '新建文件夹';
     } else {
@@ -1182,9 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     window.addEventListener('resize', () => {
-      updateBulkActionsState(); // Re-check button text on resize
-      const isLoginPage = !G.loginView.classList.contains('hidden');
-      if (isLoginPage) { G.themeToggle.classList.remove('hidden'); }
+      updateBulkActionsState();
     });
   };
   
@@ -1197,7 +1195,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       G.currentPath = getPathFromHash();
       G.pageHeader.classList.remove('hidden');
-      G.themeToggle.classList.remove('hidden');
       G.pageFooter.classList.remove('hidden');
     }
     applyViewMode();
