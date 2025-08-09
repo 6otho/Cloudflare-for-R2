@@ -1,12 +1,14 @@
 // =================================================================================
-// R2-UI-WORKER v8.7 (Critical Navigation Fix by AI Assistant)
+// R2-UI-WORKER v8.8 (Critical Upload Fix by AI Assistant)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (CRITICAL FIX) SPA ROUTING LOGIC: Corrected a fatal error in the `navigateTo`
-//   function that improperly handled the root path. This bug caused the page to
-//   reset to the root directory on refresh and broke browser back/forward navigation.
-//   The routing is now stable, robust, and works as expected.
-// - All other recent features (file size display fix, bottom progress bar) are maintained.
+// - (CRITICAL FIX) MULTI-FILE UPLOAD: Rewrote the entire upload handler to use a
+//   parallel `Promise.all` approach. This fixes a major bug where only the first
+//   file in a selection would upload. Multiple files now upload concurrently and reliably.
+// - (CRITICAL FIX) ACCURATE SUCCESS COUNT: The success toast notification now
+//   correctly displays the total number of files uploaded in the batch.
+// - (PERFORMANCE) Uploads are now significantly faster due to parallel processing.
+// - All other features (SPA routing, file size display, bottom bar) are maintained.
 // =================================================================================
 
 export default {
@@ -657,11 +659,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return hash.startsWith('#/') ? decodeURIComponent(hash.substring(2)) : '';
   };
   
-  // --- CRITICAL FIX: Corrected SPA Navigation Logic ---
   const navigateTo = (path) => {
     if (G.currentPath === path) return;
     G.currentPath = path;
-    const hash = \`#/\${path}\`; // Simplified and corrected hash creation
+    const hash = \`#/\${path}\`;
     history.pushState({ path }, '', hash);
     renderFiles();
     updateBulkActionsState();
@@ -810,12 +811,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const handleUpload = async (files) => {
     if (G.uploadState.active) { showToast("已有上传任务在进行中。", 'accent', 2000); return; }
-    if (files.length === 0) return;
+    
+    const filesArray = Array.from(files);
+    if (filesArray.length === 0) return;
     
     G.uploadState.active = true;
+    
     const MAX_SIZE = 100 * 1024 * 1024;
     let totalSize = 0;
-    for (const file of files) {
+    
+    for (const file of filesArray) {
         if (file.size > MAX_SIZE) {
             showToast('文件大于100MB上传不成功', 'error', 5000);
             G.uploadState.active = false;
@@ -825,26 +830,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     G.uploadState.totalSize = totalSize;
-    G.uploadState.uploadedSize = 0;
+    const progressTracker = new Array(filesArray.length).fill(0);
+    
+    const updateOverallProgress = () => {
+        const totalLoaded = progressTracker.reduce((acc, p) => acc + p, 0);
+        const percent = totalSize > 0 ? Math.round((totalLoaded / totalSize) * 100) : 0;
+        updateProgressBar(percent);
+    };
+    
     updateProgressBar(0);
     showProgressBar();
 
     try {
-        let uploadedSizeSoFar = 0;
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+        const uploadPromises = filesArray.map((file, index) => {
             const uploadKey = G.currentPath + file.name;
             const onProgress = (loaded) => {
-                const currentTotalUploaded = uploadedSizeSoFar + loaded;
-                const percent = totalSize > 0 ? Math.round((currentTotalUploaded / totalSize) * 100) : 0;
-                updateProgressBar(percent);
+                progressTracker[index] = loaded;
+                updateOverallProgress();
             };
-            const sizeOfThisFile = await uploadFileWithProgress(file, uploadKey, onProgress);
-            uploadedSizeSoFar += sizeOfThisFile;
-        }
+            return uploadFileWithProgress(file, uploadKey, onProgress);
+        });
+
+        await Promise.all(uploadPromises);
         
         updateProgressBar(100, 'success');
-        showToast(\`\${files.length} 个文件全部上传成功！\`, 'success');
+        showToast(\`\${filesArray.length} 个文件全部上传成功！\`, 'success');
         await refreshFileList();
         
     } catch (error) {
@@ -904,11 +914,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     G.dropZone.addEventListener('click', () => G.fileInput.click());
-    G.fileInput.addEventListener('change', () => { handleUpload(G.fileInput.files); G.fileInput.value = ''; });
+    // --- CRITICAL FIX: Correctly handle async upload and input clearing ---
+    G.fileInput.addEventListener('change', async () => {
+      await handleUpload(G.fileInput.files);
+      G.fileInput.value = ''; // Clear only AFTER upload is complete
+    });
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => document.body.addEventListener(e, p => p.preventDefault()));
     ['dragenter', 'dragover'].forEach(eventName => G.dropZone.addEventListener(eventName, () => G.dropZone.classList.add('dragging')));
     ['dragleave', 'drop'].forEach(eventName => G.dropZone.addEventListener(eventName, () => G.dropZone.classList.remove('dragging')));
     G.dropZone.addEventListener('drop', e => handleUpload(e.dataTransfer.files));
+
     G.lightboxClose.addEventListener('click', closeLightbox);
     G.lightboxPrev.addEventListener('click', showPrevImage);
     G.lightboxNext.addEventListener('click', showNextImage);
@@ -1032,6 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
       G.passwordInput.value = savedPassword;
       handleLogin();
     } else {
+      G.currentPath = getPathFromHash();
       if (G.pageHeader) G.pageHeader.classList.remove('hidden');
       if (G.themeToggle) G.themeToggle.classList.add('hidden');
       if (G.pageFooter) G.pageFooter.classList.remove('hidden');
