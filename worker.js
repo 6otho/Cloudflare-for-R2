@@ -1,9 +1,10 @@
 // =================================================================================
-// R2-UI-WORKER v9.2.2 (UI/UX Cleanup)
+// R2-UI-WORKER v9.2.5 (Final Perfection)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI FIX) Removed the redundant theme toggle button from the login page. The header toggle is now the sole option.
-// - v9.2.1 changes (Corrected sort arrow SVG) are retained.
+// - (UI-PERFECTION) Added a semi-transparent footer bar to the login page to visually balance the header, creating a more polished frame effect.
+// - v9.2.4 changes (Unified button heights) are retained.
+// - MODIFIED: Removed footer background fill and blur effect, leaving only a top separator line and text, as requested.
 // =================================================================================
 
 export default {
@@ -261,7 +262,15 @@ export default {
     .logo-title-group { display: flex; align-items: center; }
     .page-header .logo { font-size: 2.2em; margin-right: 12px; line-height: 1; }
     .page-header .project-name { font-size: 1.2em; font-weight: 600; color: var(--ink-blue); }
-    .page-footer { position: fixed; bottom: 0; left: 0; width: 100%; padding: 20px; box-sizing: border-box; text-align: center; z-index: 10; }
+    /* --- MODIFICATION START --- */
+    .page-footer {
+      position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 0; box-sizing: border-box;
+      text-align: center; z-index: 10;
+      border-top: 1px solid var(--border-color);
+      /* Removed background-color and backdrop-filter for a cleaner look */
+    }
+    /* Removed theme-specific background rules for .page-footer */
+    /* --- MODIFICATION END --- */
     .page-footer, .page-footer a { font-size: 0.85em; color: var(--text-light); text-decoration: none; }
     .page-footer a { font-weight: bold; color: var(--deep-blue); transition: opacity 0.2s; }
     .page-footer a:hover { opacity: 0.8; }
@@ -300,9 +309,21 @@ export default {
     #bulk-actions-container { display: flex; gap: 10px; align-items: center; }
     #bulk-actions-container #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #bulk-actions-container #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
-    .sort-button-group { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;}
+    .sort-button-group {
+      display: flex;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: var(--card-bg);
+      height: 36px;
+      box-sizing: border-box;
+    }
     .sort-button-group:hover { border-color: var(--c-primary); }
-    .sort-button-group button { border: none; border-radius: 0; }
+    .sort-button-group button {
+      border: none;
+      border-radius: 0;
+      height: 100%;
+    }
     .sort-button-group button:first-child { border-right: 1px solid var(--border-color); }
     .sort-button-group button:last-child { width: 36px; padding: 0; }
     .sort-button-group button svg { width: 20px; height: 20px; }
@@ -458,6 +479,7 @@ export default {
       .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;}
       #bulk-actions-container { gap: 8px; }
       .actions button, #bulk-actions-container button { height: 34px; padding: 0 10px; font-size: 13px; line-height: 1; }
+      .sort-button-group { height: 34px; }
       #view-toggle-button, .sort-button-group button:last-child { width: 34px; padding: 0; }
       .grid-view .info { padding: 10px 5px; }
       .grid-view .filename { font-size: 0.8em; }
