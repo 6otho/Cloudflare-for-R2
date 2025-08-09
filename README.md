@@ -1,6 +1,6 @@
 # ☁️ Cloudflare-R2 文件管理器
 
-![Cloudflare-R2 文件管理器预览1](https://file.ikim.eu.org/Url-img%2Fphoto_2025-08-09_20-09-08.jpg) ![Cloudflare-R2 文件管理器预览2](https://file.ikim.eu.org/Url-img%2Fphoto_2025-08-09_20-12-16.jpg)
+![Cloudflare-R2 文件管理器预览1](https://file.ikim.eu.org/Url-img/photo_2025-08-09_20-09-08.jpg) ![Cloudflare-R2 文件管理器预览2](https://file.ikim.eu.org/Url-img/photo_2025-08-09_20-12-16.jpg)
 
 这是一个超级轻量、功能强大且界面精美的 Cloudflare R2 文件管理器！🚀 只需一个 Worker 文件，你就能拥有一个属于自己的、完全免费的私人网盘。
 
