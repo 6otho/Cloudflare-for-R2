@@ -1,10 +1,11 @@
 // =================================================================================
-// R2-UI-WORKER v9.2.5 (Final Perfection)
+// R2-UI-WORKER v9.2.7 (Final Perfection)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (UI-PERFECTION) Added a semi-transparent footer bar to the login page to visually balance the header, creating a more polished frame effect.
-// - v9.2.4 changes (Unified button heights) are retained.
-// - MODIFIED: Removed footer background fill and blur effect, leaving only a top separator line and text, as requested.
+// - (FIX) Correctly handle URL encoding for files in subfolders. 
+//         This removes the '%2F' artifact in copied/generated links by encoding 
+//         path segments individually, preserving '/' as a separator.
+// - v9.2.6 changes (dark mode UI, folder name display) are retained.
 // =================================================================================
 
 export default {
@@ -140,6 +141,7 @@ export default {
   },
 
   async handleFileDownload(request, env) {
+    // The key from the pathname is already decoded by the Workers runtime.
     const key = decodeURIComponent(new URL(request.url).pathname.slice(1));
     const object = await env.BUCKET.get(key);
     if (object === null) return new Response('Object Not Found', { status: 404 });
@@ -166,6 +168,11 @@ export default {
     if (!text) return '';
     return text.replace(/([_*\[\]()~`>#+\-=|{}.!])/g, '\\$1');
   },
+  
+  encodePath(path) {
+      if (!path) return '';
+      return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  },
 
   async sendTelegramNotification(env, request, key, text) {
     const { TG_BOT_TOKEN, TG_CHAT_ID } = env;
@@ -174,7 +181,8 @@ export default {
     }
 
     const baseUrl = new URL(request.url).origin;
-    const fileUrl = `${baseUrl}/${encodeURIComponent(key)}`;
+    // Use the new encodePath function to build the URL correctly
+    const fileUrl = `${baseUrl}/${this.encodePath(key)}`;
     const isImage = this.isImageFile(key);
     const caption = `${text}\n\n*链接:* [点击查看](${fileUrl})`;
 
@@ -229,10 +237,10 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/Url-img%2Fcloud-img.jpg">
+  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/PUB%2F0260eb1c1d2b11bcb9e94a8ed2a2614b.jpg">
   <style>
     :root {
-      --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #414868;
+      --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #303446;
       --c-light-bg: #eff1f5; --c-light-card: #ffffff; --c-light-text: #4c4f69; --c-light-text-light: #5c5f77; --c-light-border: #ccd0da;
       --c-primary: #7aa2f7; --c-success: #9ece6a; --c-error: #f7768e; --c-accent: #bb9af7;
       --c-ink-blue-light: #2c3e50; --c-ink-blue-dark: #a6c1ee; --c-deep-blue-light: #1d3557; --c-deep-blue-dark: #457b9d;
@@ -262,15 +270,11 @@ export default {
     .logo-title-group { display: flex; align-items: center; }
     .page-header .logo { font-size: 2.2em; margin-right: 12px; line-height: 1; }
     .page-header .project-name { font-size: 1.2em; font-weight: 600; color: var(--ink-blue); }
-    /* --- MODIFICATION START --- */
     .page-footer {
       position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 0; box-sizing: border-box;
       text-align: center; z-index: 10;
       border-top: 1px solid var(--border-color);
-      /* Removed background-color and backdrop-filter for a cleaner look */
     }
-    /* Removed theme-specific background rules for .page-footer */
-    /* --- MODIFICATION END --- */
     .page-footer, .page-footer a { font-size: 0.85em; color: var(--text-light); text-decoration: none; }
     .page-footer a { font-weight: bold; color: var(--deep-blue); transition: opacity 0.2s; }
     .page-footer a:hover { opacity: 0.8; }
@@ -654,6 +658,11 @@ document.addEventListener('DOMContentLoaded', () => {
       activeXHRs: [] 
     }
   };
+  
+  const encodePath = (path) => {
+    if (!path) return '';
+    return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+  };
 
   const showToast = (message, type = 'accent', duration = 3000) => {
     let toast = document.getElementById('toast');
@@ -695,7 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return '#icon-file';
   };
   
-  const generateVideoThumbnail = (key) => new Promise((resolve, reject) => { const video = document.createElement('video'); const canvas = document.createElement('canvas'); const context = canvas.getContext('2d'); let resolved = false; video.crossOrigin = "anonymous"; video.src = \`/\${encodeURIComponent(key)}\`; video.currentTime = 1; const timeoutId = setTimeout(() => { if (!resolved) { cleanup(); reject(new Error('Thumbnail generation timed out')); } }, 5000); const cleanup = () => { video.removeEventListener('seeked', onSeeked); video.removeEventListener('error', onError); video.src = ''; clearTimeout(timeoutId); }; const onSeeked = () => { if (resolved) return; resolved = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; context.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.8); cleanup(); resolve(dataUrl); }; const onError = (e) => { if (resolved) return; resolved = true; cleanup(); reject(new Error('Failed to load video.')); }; video.addEventListener('seeked', onSeeked, { once: true }); video.addEventListener('error', onError, { once: true }); });
+  const generateVideoThumbnail = (key) => new Promise((resolve, reject) => { const video = document.createElement('video'); const canvas = document.createElement('canvas'); const context = canvas.getContext('2d'); let resolved = false; video.crossOrigin = "anonymous"; video.src = \`/\${encodePath(key)}\`; video.currentTime = 1; const timeoutId = setTimeout(() => { if (!resolved) { cleanup(); reject(new Error('Thumbnail generation timed out')); } }, 5000); const cleanup = () => { video.removeEventListener('seeked', onSeeked); video.removeEventListener('error', onError); video.src = ''; clearTimeout(timeoutId); }; const onSeeked = () => { if (resolved) return; resolved = true; canvas.width = video.videoWidth; canvas.height = video.videoHeight; context.drawImage(video, 0, 0, canvas.width, canvas.height); const dataUrl = canvas.toDataURL('image/jpeg', 0.8); cleanup(); resolve(dataUrl); }; const onError = (e) => { if (resolved) return; resolved = true; cleanup(); reject(new Error('Failed to load video.')); }; video.addEventListener('seeked', onSeeked, { once: true }); video.addEventListener('error', onError, { once: true }); });
   
   const formatBytes = (bytes, d=2) => { 
     if (bytes === null || bytes === undefined || !isFinite(bytes)) return "信息获取中";
@@ -730,7 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderFiles(); 
   };
   const toggleViewMode = () => { G.viewMode = G.viewMode === 'grid' ? 'list' : 'grid'; localStorage.setItem('viewMode', G.viewMode); applyViewMode(); };
-  const openLightbox = (index) => { G.currentImageIndex = index; G.lightboxImage.src = \`/\${encodeURIComponent(G.imageFiles[G.currentImageIndex].key)}\`; G.lightbox.classList.remove('hidden'); document.body.style.overflow = 'hidden'; };
+  const openLightbox = (index) => { G.currentImageIndex = index; G.lightboxImage.src = \`/\${encodePath(G.imageFiles[G.currentImageIndex].key)}\`; G.lightbox.classList.remove('hidden'); document.body.style.overflow = 'hidden'; };
   const closeLightbox = () => { G.lightbox.classList.add('hidden'); document.body.style.overflow = 'auto'; };
   const showNextImage = () => openLightbox((G.currentImageIndex + 1) % G.imageFiles.length);
   const showPrevImage = () => openLightbox((G.currentImageIndex - 1 + G.imageFiles.length) % G.imageFiles.length);
@@ -790,12 +799,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortedItems = itemsInCurrentPath.sort((a, b) => { if (a.isNav) return -1; if (b.isNav) return 1; const aIsFolder = a.key.endsWith('/'); const bIsFolder = b.key.endsWith('/'); if (aIsFolder && !bIsFolder) return -1; if (!aIsFolder && bIsFolder) return 1; let comparison = 0; if (G.sortBy === 'uploaded') { const dateA = a.uploaded ? new Date(a.uploaded) : new Date(0); const dateB = b.uploaded ? new Date(b.uploaded) : new Date(0); comparison = dateA - dateB; } else if (G.sortBy === 'name') { comparison = a.key.localeCompare(b.key); } else if (G.sortBy === 'size') { comparison = a.size - b.size; } return G.sortDirection === 'asc' ? comparison : -comparison; });
     sortedItems.forEach(file => {
       const isNavUp = file.isNav && file.key === '..';
-      const displayName = isNavUp ? ".." : file.key.substring(G.currentPath.length);
+      let displayName = isNavUp ? ".." : file.key.substring(G.currentPath.length);
+      if (displayName.endsWith('/') && !isNavUp) {
+        displayName = displayName.slice(0, -1);
+      }
       const fileTypeIdentifier = isNavUp ? '#icon-folder' : getFileIcon(file.key);
       const isFolder = file.key.endsWith('/') || isNavUp;
       const item = document.createElement('div'); item.className = 'file-item'; item.dataset.key = file.key; if (isNavUp) item.dataset.path = file.path;
       let iconHTML = '';
-      if (G.viewMode === 'grid' && fileTypeIdentifier === 'image') { iconHTML = \`<img src="/\${encodeURIComponent(file.key)}" alt="\${displayName}" loading="lazy">\`; } else if (G.viewMode === 'grid' && fileTypeIdentifier === 'video') { iconHTML = \`<img class="video-thumbnail-placeholder" data-video-key="\${file.key}" alt="\${displayName}">\`; } else { let symbolId; switch (fileTypeIdentifier) { case 'image': symbolId = '#icon-file'; break; case 'video': symbolId = '#icon-video'; break; default: symbolId = fileTypeIdentifier; } iconHTML = \`<svg><use xlink:href="\${symbolId}"></use></svg>\`; }
+      if (G.viewMode === 'grid' && fileTypeIdentifier === 'image') { iconHTML = \`<img src="/\${encodePath(file.key)}" alt="\${displayName}" loading="lazy">\`; } else if (G.viewMode === 'grid' && fileTypeIdentifier === 'video') { iconHTML = \`<img class="video-thumbnail-placeholder" data-video-key="\${file.key}" alt="\${displayName}">\`; } else { let symbolId; switch (fileTypeIdentifier) { case 'image': symbolId = '#icon-file'; break; case 'video': symbolId = '#icon-video'; break; default: symbolId = fileTypeIdentifier; } iconHTML = \`<svg><use xlink:href="\${symbolId}"></use></svg>\`; }
       const actionsHTML = isNavUp ? '' : \` <div class="file-actions"> <div class="menu-button-wrapper"><div class="menu-button" data-key="\${file.key}"></div> <div class="menu-items" data-key="\${file.key}"> <div class="menu-item" data-action="rename">重命名</div> \${!isFolder ? '<div class="menu-item" data-action="download">下载</div>' : ''} <div class="menu-item" data-action="move">移动</div> \${!isFolder ? '<div class="menu-item" data-action="copy-link">复制链接</div>' : ''} <div class="menu-item danger" data-action="delete" style="color: var(--c-error);">删除</div> </div></div> </div>\`;
       const checkboxHTML = isNavUp ? '' : \`<input type="checkbox" class="checkbox" data-key="\${file.key}">\`;
       if (G.viewMode === 'grid') { item.innerHTML = \`<div class="icon">\${iconHTML}</div><div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>\${checkboxHTML}\${actionsHTML}\`; } else { item.innerHTML = \`\${checkboxHTML}<div class="icon">\${iconHTML}</div><div class="info"><div class="filename" title="\${displayName}">\${displayName}</div><div class="filesize">\${isFolder ? '文件夹' : formatBytes(file.size)}</div></div>\${actionsHTML}\`; }
@@ -833,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  const handleFileAction = async (action, key) => { G.currentFileKey = key; G.keysToMove = []; switch(action) { case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break; case 'download': const a = document.createElement('a'); a.href = \`/\${encodeURIComponent(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break; case 'move': const folders = getFolderList(); G.folderDestination.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); }); G.moveItemName.textContent = \`移动: \${key}\`; G.moveDialog.classList.add('show'); break; case 'copy-link': navigator.clipboard.writeText(\`\${window.location.origin}/\${encodeURIComponent(key)}\`).then(() => showToast('链接已复制')).catch(err => showToast('复制失败: ' + err, 'error')); break; case 'delete': if (await showConfirmationDialog('确认删除', \`确定删除 "\${key}" 吗？<br>此操作不可恢复。\`)) { await _performDelete([key]); } break; } };
+  const handleFileAction = async (action, key) => { G.currentFileKey = key; G.keysToMove = []; switch(action) { case 'rename': G.newFilename.value = key.endsWith('/') ? key.slice(0, -1).split('/').pop() : key.split('/').pop(); G.renameDialog.classList.add('show'); break; case 'download': const a = document.createElement('a'); a.href = \`/\${encodePath(key)}\`; a.download = key.split('/').pop(); document.body.appendChild(a); a.click(); document.body.removeChild(a); break; case 'move': const folders = getFolderList(); G.folderDestination.innerHTML = ''; folders.forEach(folder => { const option = document.createElement('option'); option.value = folder; option.textContent = folder === '' ? '(根目录)' : folder; G.folderDestination.appendChild(option); }); G.moveItemName.textContent = \`移动: \${key}\`; G.moveDialog.classList.add('show'); break; case 'copy-link': navigator.clipboard.writeText(\`\${window.location.origin}/\${encodePath(key)}\`).then(() => showToast('链接已复制')).catch(err => showToast('复制失败: ' + err, 'error')); break; case 'delete': if (await showConfirmationDialog('确认删除', \`确定删除 "\${key}" 吗？<br>此操作不可恢复。\`)) { await _performDelete([key]); } break; } };
   const moveOrRenameFile = async (oldKey, newKey) => { if (!newKey || newKey === oldKey) { return; } await apiCall('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldKey, newKey }) }); };
   const handleRename = async () => { const oldKey = G.currentFileKey; const newName = G.newFilename.value.trim(); G.renameDialog.classList.remove('show'); if (!newName) return; const isFolder = oldKey.endsWith('/'); const newKey = G.currentPath + newName + (isFolder ? '/' : ''); try { await moveOrRenameFile(oldKey, newKey); showToast(\`操作成功: "\${newKey}"\`, 'success'); await refreshFileList(); } catch(error) { showToast(\`操作失败: \${error.message}\`, 'error'); } };
   const handleMove = async () => { const oldKey = G.currentFileKey; if (!oldKey) return; const destination = G.folderDestination.value; G.moveDialog.classList.remove('show'); const filename = oldKey.endsWith('/') ? oldKey.slice(0, -1).split('/').pop() + '/' : oldKey.split('/').pop(); const newKey = destination + filename; try { await moveOrRenameFile(oldKey, newKey); showToast(\`成功移动到: "\${newKey}"\`, 'success'); await refreshFileList(); } catch (error) { showToast(\`移动失败: \${error.message}\`, 'error'); } };
@@ -940,7 +952,7 @@ document.addEventListener('DOMContentLoaded', () => {
         xhr.addEventListener('error', () => reject(new Error('上传时发生网络错误')));
         xhr.addEventListener('abort', () => reject(new Error('上传已取消')));
         
-        xhr.open('PUT', \`/api/upload/\${encodeURIComponent(key)}\`, true);
+        xhr.open('PUT', \`/api/upload/\${encodePath(key)}\`, true);
         xhr.setRequestHeader('x-auth-password', G.password);
         xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
         
@@ -1172,7 +1184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const imageIndex = G.imageFiles.findIndex(f => f.key === key);
                 if (imageIndex > -1) openLightbox(imageIndex);
             } else if (fileType === 'video') {
-                G.videoElement.src = \`/\${encodeURIComponent(key)}\`;
+                G.videoElement.src = \`/\${encodePath(key)}\`;
                 G.videoPlayer.classList.remove('hidden');
                 G.videoElement.play().catch(err => console.error("Video play failed:", err));
             }
