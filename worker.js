@@ -1,11 +1,11 @@
 // =================================================================================
-// R2-UI-WORKER v9.2.7 (Final Perfection)
+// R2-UI-WORKER v9.2.8 (Final Perfection)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
-// - (FIX) Correctly handle URL encoding for files in subfolders. 
-//         This removes the '%2F' artifact in copied/generated links by encoding 
-//         path segments individually, preserving '/' as a separator.
-// - v9.2.6 changes (dark mode UI, folder name display) are retained.
+// - (FIX) Made Telegram notifications robust for large images. The script now checks 
+//         the file size and falls back to a text-based notification for images 
+//         larger than 5MB, preventing API errors from Telegram.
+// - v9.2.7 changes (URL encoding, dark mode, folder names) are retained.
 // =================================================================================
 
 export default {
@@ -54,7 +54,10 @@ export default {
 
       const escapedKey = this.escapeMarkdown(key);
       const message = `☁️ *新文件上传成功*\n\n*文件名:* \`${escapedKey}\``;
-      context.waitUntil(this.sendTelegramNotification(env, request, key, message));
+      // **MODIFICATION START**: Pass file size to the notification function
+      const fileSize = contentLength ? parseInt(contentLength, 10) : 0;
+      context.waitUntil(this.sendTelegramNotification(env, request, key, message, fileSize));
+      // **MODIFICATION END**
 
       return new Response(`Uploaded ${key} successfully.`, { status: 201 });
     }
@@ -129,7 +132,8 @@ export default {
         }
 
         const message = `➡️ *项目已移动*\n\n*从:* \`${this.escapeMarkdown(oldKey)}\`\n*到:* \`${this.escapeMarkdown(newKey)}\``;
-        context.waitUntil(this.sendTelegramNotification(env, request, newKey, message));
+        // For moves, we don't know the size, so we send a simple notification.
+        context.waitUntil(this.sendTelegramNotification(env, request, newKey, message, 0));
 
         return new Response(`Moved ${oldKey} to ${newKey} successfully.`, { status: 200 });
 
@@ -141,7 +145,6 @@ export default {
   },
 
   async handleFileDownload(request, env) {
-    // The key from the pathname is already decoded by the Workers runtime.
     const key = decodeURIComponent(new URL(request.url).pathname.slice(1));
     const object = await env.BUCKET.get(key);
     if (object === null) return new Response('Object Not Found', { status: 404 });
@@ -174,22 +177,28 @@ export default {
       return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
   },
 
-  async sendTelegramNotification(env, request, key, text) {
+  // **MODIFICATION START**: Accept fileSize as an argument
+  async sendTelegramNotification(env, request, key, text, fileSize = 0) {
+  // **MODIFICATION END**
     const { TG_BOT_TOKEN, TG_CHAT_ID } = env;
     if (!TG_BOT_TOKEN || !TG_CHAT_ID) {
       return;
     }
 
     const baseUrl = new URL(request.url).origin;
-    // Use the new encodePath function to build the URL correctly
     const fileUrl = `${baseUrl}/${this.encodePath(key)}`;
-    const isImage = this.isImageFile(key);
     const caption = `${text}\n\n*链接:* [点击查看](${fileUrl})`;
+    
+    // **MODIFICATION START**: Add logic to check file size
+    const isImage = this.isImageFile(key);
+    // Telegram's limit for photos by URL is 5MB.
+    const TELEGRAM_PHOTO_URL_LIMIT = 5 * 1024 * 1024; 
 
     let apiUrl;
     let payload;
 
-    if (isImage) {
+    // Send as a photo ONLY if it's an image AND its size is within the limit.
+    if (isImage && fileSize > 0 && fileSize < TELEGRAM_PHOTO_URL_LIMIT) {
       apiUrl = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendPhoto`;
       payload = {
         chat_id: TG_CHAT_ID,
@@ -198,14 +207,16 @@ export default {
         parse_mode: 'MarkdownV2',
       };
     } else {
+      // Fallback for non-images, folders, or large images.
       apiUrl = `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`;
       payload = {
         chat_id: TG_CHAT_ID,
         text: caption,
         parse_mode: 'MarkdownV2',
-        disable_web_page_preview: key.endsWith('/') // 文件夹不显示预览
+        disable_web_page_preview: key.endsWith('/') // Disable preview for folders
       };
     }
+    // **MODIFICATION END**
 
     try {
       const response = await fetch(apiUrl, {
@@ -215,7 +226,8 @@ export default {
       });
 
       if (!response.ok) {
-        console.error(`Telegram notification failed: ${response.status} ${response.statusText}`, await response.text());
+        const errorText = await response.text();
+        console.error(`Telegram notification failed: ${response.status} ${response.statusText}`, errorText);
       } else {
         console.log('Telegram notification sent successfully.');
       }
@@ -237,7 +249,7 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/Url-img/cloud-img.jpg">
+  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/PUB%2F0260eb1c1d2b11bcb9e94a8ed2a2614b.jpg">
   <style>
     :root {
       --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #303446;
