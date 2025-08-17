@@ -1,7 +1,10 @@
 // =================================================================================
-// R2-UI-WORKER v9.2.8 (Final Perfection)
+// R2-UI-WORKER v9.2.9 (Final Perfection)
 // Features: Light/Dark Mode, Image Previews, Lightbox, Grid/List View, Mobile-First.
 // Changelog:
+// - (STYLE) Reverted logo and uploader to original state per user request.
+// - (STYLE) Added a subtle dot-grid background pattern for both light and dark themes.
+// - (STYLE) Kept the purple-toned dark mode and original light mode color schemes.
 // - (FIX) Made Telegram notifications robust for large images. The script now checks 
 //         the file size and falls back to a text-based notification for images 
 //         larger than 5MB, preventing API errors from Telegram.
@@ -249,26 +252,41 @@ export default {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cloudflare-R2</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☁️</text></svg>">
-  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/PUB%2F0260eb1c1d2b11bcb9e94a8ed2a2614b.jpg">
+  <link rel="apple-touch-icon" href="https://file.ikim.eu.org/PUB/0260eb1c1d2b11bcb9e94a8ed2a2614b.jpg">
   <style>
     :root {
-      --c-dark-bg: #1a1b26; --c-dark-card: #24283b; --c-dark-text: #c0caf5; --c-dark-text-light: #a9b1d6; --c-dark-border: #303446;
+      /* Light Theme */
       --c-light-bg: #eff1f5; --c-light-card: #ffffff; --c-light-text: #4c4f69; --c-light-text-light: #5c5f77; --c-light-border: #ccd0da;
-      --c-primary: #7aa2f7; --c-success: #9ece6a; --c-error: #f7768e; --c-accent: #bb9af7;
-      --c-ink-blue-light: #2c3e50; --c-ink-blue-dark: #a6c1ee; --c-deep-blue-light: #1d3557; --c-deep-blue-dark: #457b9d;
+      --c-light-pattern: rgba(0, 0, 0, 0.06);
+
+      /* Dark Theme (Purple Inspired) */
+      --c-dark-bg: #161621; --c-dark-card: #252533; --c-dark-text: #e0e0e0; --c-dark-text-light: #888899; --c-dark-border: #3a3a4c;
+      --c-dark-primary: #8A63D2; --c-dark-primary-hover: #7955b8;
+      --c-dark-pattern: rgba(255, 255, 255, 0.05);
+
+      /* Common */
+      --c-success: #9ece6a; --c-error: #f7768e;
     }
     html[data-theme='dark'] {
       --bg-color: var(--c-dark-bg); --card-bg: var(--c-dark-card); --text-color: var(--c-dark-text); --text-light: var(--c-dark-text-light); --border-color: var(--c-dark-border);
-      --ink-blue: var(--c-ink-blue-dark); --deep-blue: var(--c-deep-blue-dark); --uploader-bg: rgba(187, 154, 247, 0.05);
+      --c-primary: var(--c-dark-primary); --c-primary-hover: var(--c-dark-primary-hover);
+      --ink-blue: var(--c-dark-text); --deep-blue: var(--c-dark-primary);
+      --uploader-bg: rgba(138, 99, 210, 0.05);
+      --pattern-color: var(--c-dark-pattern);
     }
     html[data-theme='light'] {
       --bg-color: var(--c-light-bg); --card-bg: var(--c-light-card); --text-color: var(--c-light-text); --text-light: var(--c-light-text-light); --border-color: var(--c-light-border);
-      --ink-blue: var(--c-ink-blue-light); --deep-blue: var(--c-deep-blue-light); --uploader-bg: rgba(122, 162, 247, 0.1);
+      --c-primary: #7aa2f7; --c-primary-hover: #628aed;
+      --ink-blue: #2c3e50; --deep-blue: #1d3557;
+      --uploader-bg: rgba(122, 162, 247, 0.1);
+      --pattern-color: var(--c-light-pattern);
     }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; 
       background-color: var(--bg-color); color: var(--text-color); font-size: 16px; transition: background-color .3s, color .3s;
       touch-action: manipulation;
+      background-image: radial-gradient(var(--pattern-color) 1px, transparent 1px);
+      background-size: 16px 16px;
     }
     .hidden { display: none !important; }
     .page-header {
@@ -277,7 +295,7 @@ export default {
       background-color: rgba(var(--card-bg-rgb), 0.8); backdrop-filter: blur(8px);
       -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border-color); z-index: 10;
     }
-    html[data-theme='dark'] .page-header { background-color: rgba(36, 40, 59, 0.8); }
+    html[data-theme='dark'] .page-header { background-color: var(--c-dark-card); }
     html[data-theme='light'] .page-header { background-color: rgba(255, 255, 255, 0.8); }
     .logo-title-group { display: flex; align-items: center; }
     .page-header .logo { font-size: 2.2em; margin-right: 12px; line-height: 1; }
@@ -285,6 +303,7 @@ export default {
     .page-footer {
       position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 0; box-sizing: border-box;
       text-align: center; z-index: 10;
+      background-color: var(--card-bg);
       border-top: 1px solid var(--border-color);
     }
     .page-footer, .page-footer a { font-size: 0.85em; color: var(--text-light); text-decoration: none; }
@@ -297,11 +316,12 @@ export default {
     .login-box { padding: 40px; background-color: var(--card-bg); border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 380px; box-sizing: border-box; transition: all .3s ease; }
     .login-logo { font-size: 4.5em; line-height: 1; margin-bottom: 5px; }
     .login-box h1 { color: var(--c-primary); margin: 0 0 8px 0; }
-    .login-box .login-prompt { margin-top: 0; }
+    .login-box .login-prompt { margin-top: 0; color: var(--text-light); }
     .input-with-icon { position: relative; width: 100%; margin: 30px 0; }
     .input-with-icon .input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-light); pointer-events: none; width: 20px; height: 20px; }
     .login-box input { width: 100%; box-sizing: border-box; padding: 12px 12px 12px 45px; background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-color); font-size: 1em; }
-    .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; }
+    .login-box button { width: 100%; padding: 12px; background-color: var(--c-primary); border: none; border-radius: 8px; color: #fff; font-size: 1.1em; cursor: pointer; transition: background-color .2s; }
+    .login-box button:hover { background-color: var(--c-primary-hover); }
     #login-error { color: var(--c-error); margin-top: 10px; height: 20px; }
     #app-view { padding: 15px; max-width: 1400px; margin: 0 auto; padding-top: 92px; padding-bottom: 40px; }
     header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
@@ -317,29 +337,13 @@ export default {
     .actions button:disabled { cursor: not-allowed; opacity: 0.5; }
     #view-toggle-button { width: 36px; padding: 0; }
     #view-toggle-button svg { width: 20px; height: 20px; }
-    #select-all-button, #bulk-actions-container #deselect-all-button {
-      background-color: var(--c-success);
-      color: #fff;
-      border-color: var(--c-success);
-    }
+    #select-all-button, #bulk-actions-container #deselect-all-button { background-color: var(--c-success); color: #fff; border-color: var(--c-success); }
     #bulk-actions-container { display: flex; gap: 10px; align-items: center; }
     #bulk-actions-container #delete-button { background-color: var(--c-error); color: #fff; border-color: var(--c-error); }
     #bulk-actions-container #move-selected-button { background-color: var(--c-primary); color: #fff; border-color: var(--c-primary); }
-    .sort-button-group {
-      display: flex;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      overflow: hidden;
-      background-color: var(--card-bg);
-      height: 36px;
-      box-sizing: border-box;
-    }
+    .sort-button-group { display: flex; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; background-color: var(--card-bg); height: 36px; box-sizing: border-box; }
     .sort-button-group:hover { border-color: var(--c-primary); }
-    .sort-button-group button {
-      border: none;
-      border-radius: 0;
-      height: 100%;
-    }
+    .sort-button-group button { border: none; border-radius: 0; height: 100%; }
     .sort-button-group button:first-child { border-right: 1px solid var(--border-color); }
     .sort-button-group button:last-child { width: 36px; padding: 0; }
     .sort-button-group button svg { width: 20px; height: 20px; }
@@ -350,8 +354,9 @@ export default {
     .search-wrapper { position: relative; margin-bottom: 20px; }
     .search-wrapper svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--text-light); pointer-events: none; }
     #search-input { width: 100%; padding: 12px 15px 12px 45px; font-size: 1em; color: var(--text-color); background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
-    .uploader { border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; margin-bottom: 20px; background-color: var(--uploader-bg); }
-    .uploader.dragging { background-color: var(--c-primary); color: #fff; }
+    .uploader { border: 2px dashed var(--border-color); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; margin-bottom: 20px; background-color: var(--uploader-bg); transition: background-color .2s, border-color .2s; }
+    .uploader:hover { border-color: var(--c-primary); }
+    .uploader.dragging { background-color: var(--c-primary); color: #fff; border-style: solid; }
     .file-container.list-view { display: block; }
     .file-container.list-view .file-item { display: flex; align-items: center; padding: 10px; background-color: var(--card-bg); border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; cursor: pointer; }
     .list-view .icon { flex-shrink: 0; width: 24px; height: 24px; display:flex; align-items:center; justify-content:center; margin: 0 10px; }
@@ -410,110 +415,18 @@ export default {
     .dialog input, .dialog select { width: 100%; box-sizing: border-box; padding: 10px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--text-color); }
     .dialog-buttons { display: flex; justify-content: flex-end; gap: 10px; }
     .dialog-buttons button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    .dialog-buttons .confirm-btn { background-color: var(--c-error); color: white; }
+    .dialog-buttons .confirm-btn { background-color: var(--c-primary); color: white; }
     .dialog-buttons .cancel-btn { background-color: var(--border-color); color: var(--text-color); }
-    
-    #progress-bar-container {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 22px;
-      background-color: var(--card-bg);
-      border-top: 1px solid var(--border-color);
-      box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-      z-index: 9998;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease-in-out;
-      display: flex;
-      align-items: center;
-    }
-    #progress-bar-container.visible {
-      opacity: 1;
-      pointer-events: all;
-    }
-    #progress-bar-wrapper {
-      position: relative;
-      flex-grow: 1;
-      height: 100%;
-      overflow: hidden;
-    }
-    #progress-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 0%;
-      background-color: var(--c-primary);
-      transition: width 0.1s linear, background-color 0.2s;
-    }
-    #progress-bar.success {
-      background-color: var(--c-success);
-    }
-    #progress-text {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      padding: 0 15px;
-      z-index: 2;
-      color: #ffffff;
-      font-size: 13px;
-      font-weight: 500;
-      text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
-      white-space: nowrap;
-    }
-    #cancel-upload-button {
-      flex-shrink: 0;
-      width: 32px;
-      height: 100%;
-      background-color: var(--c-error);
-      color: white;
-      border: none;
-      cursor: pointer;
-      font-size: 18px;
-      line-height: 22px;
-      font-weight: bold;
-      transition: background-color 0.2s;
-    }
-    #cancel-upload-button:hover {
-      background-color: #d96377;
-    }
-    
-    @media (max-width: 767px) {
-      #app-view { padding-top: 82px; }
-      .page-header { flex-direction: row; align-items: center; padding: 0 15px; height: 60px;}
-      .page-header .logo { font-size: 2em; margin-right: 8px;}
-      .page-header .project-name { font-size: 1.1em; }
-      .theme-toggle-header { font-size: 18px; padding: 6px; }
-      .page-footer { font-size: 0.5em; }
-      header { flex-direction: column; align-items: flex-start; gap: 20px; }
-      .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;}
-      #bulk-actions-container { gap: 8px; }
-      .actions button, #bulk-actions-container button { height: 34px; padding: 0 10px; font-size: 13px; line-height: 1; }
-      .sort-button-group { height: 34px; }
-      #view-toggle-button, .sort-button-group button:last-child { width: 34px; padding: 0; }
-      .grid-view .info { padding: 10px 5px; }
-      .grid-view .filename { font-size: 0.8em; }
-      .list-view .file-item { padding: 8px; }
-      .list-view .filename { font-size: 0.9em; }
-      .dialog { width: auto; min-width: 280px; max-width: 90%; }
-      .theme-toggle { top: 15px; right: 15px; bottom: auto; left: auto; padding: 6px 10px; font-size: 14px; }
-    }
-    @media (max-width: 420px) {
-      .actions { gap: 5px; }
-      #bulk-actions-container { gap: 5px; }
-      .actions button, #bulk-actions-container button { padding: 0 8px; font-size: 12px; }
-      #view-toggle-button, .sort-button-group button:last-child { width: 32px; }
-      .grid-view .icon { height: 100px; }
-      .grid-view .filename { font-size: 0.75em; }
-      .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
-      .login-box { padding: 25px; }
-    }
+    #progress-bar-container { position: fixed; bottom: 0; left: 0; width: 100%; height: 22px; background-color: var(--card-bg); border-top: 1px solid var(--border-color); box-shadow: 0 -2px 8px rgba(0,0,0,0.1); z-index: 9998; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out; display: flex; align-items: center; }
+    #progress-bar-container.visible { opacity: 1; pointer-events: all; }
+    #progress-bar-wrapper { position: relative; flex-grow: 1; height: 100%; overflow: hidden; }
+    #progress-bar { position: absolute; top: 0; left: 0; height: 100%; width: 0%; background-color: var(--c-primary); transition: width 0.1s linear, background-color 0.2s; }
+    #progress-bar.success { background-color: var(--c-success); }
+    #progress-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; padding: 0 15px; z-index: 2; color: #ffffff; font-size: 13px; font-weight: 500; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4); white-space: nowrap; }
+    #cancel-upload-button { flex-shrink: 0; width: 32px; height: 100%; background-color: var(--c-error); color: white; border: none; cursor: pointer; font-size: 18px; line-height: 22px; font-weight: bold; transition: background-color 0.2s; }
+    #cancel-upload-button:hover { background-color: #d96377; }
+    @media (max-width: 767px) { #app-view { padding-top: 82px; } .page-header { flex-direction: row; align-items: center; padding: 0 15px; height: 60px;} .page-header .logo { font-size: 2em; margin-right: 8px;} .page-header .project-name { font-size: 1.1em; } .theme-toggle-header { font-size: 18px; padding: 6px; } .page-footer { font-size: 0.5em; } header { flex-direction: column; align-items: flex-start; gap: 20px; } .actions { flex-wrap: nowrap; justify-content: flex-end; width: 100%; gap: 8px;} #bulk-actions-container { gap: 8px; } .actions button, #bulk-actions-container button { height: 34px; padding: 0 10px; font-size: 13px; line-height: 1; } .sort-button-group { height: 34px; } #view-toggle-button, .sort-button-group button:last-child { width: 34px; padding: 0; } .grid-view .info { padding: 10px 5px; } .grid-view .filename { font-size: 0.8em; } .list-view .file-item { padding: 8px; } .list-view .filename { font-size: 0.9em; } .dialog { width: auto; min-width: 280px; max-width: 90%; } .theme-toggle { top: 15px; right: 15px; bottom: auto; left: auto; padding: 6px 10px; font-size: 14px; } }
+    @media (max-width: 420px) { .actions { gap: 5px; } #bulk-actions-container { gap: 5px; } .actions button, #bulk-actions-container button { padding: 0 8px; font-size: 12px; } #view-toggle-button, .sort-button-group button:last-child { width: 32px; } .grid-view .icon { height: 100px; } .grid-view .filename { font-size: 0.75em; } .file-container.grid-view { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); } .login-box { padding: 25px; } }
   </style>
 </head>
 <body>
@@ -660,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
     confirmationConfirm: document.getElementById('confirmation-confirm'),
     confirmationCancel: document.getElementById('confirmation-cancel'),
     password: '', files: [], imageFiles: [], currentImageIndex: -1, 
-    theme: localStorage.getItem('theme') || 'light',
+    theme: localStorage.getItem('theme') || 'dark',
     viewMode: localStorage.getItem('viewMode') || 'grid',
     isAllSelected: false, currentFileKey: null, currentMenu: null, currentPath: '', keysToMove: [], searchTerm: '', sortBy: 'uploaded', sortDirection: 'desc',
     sortCycle: ['uploaded', 'name', 'size'], sortDisplayNames: { uploaded: '上传时间', name: '名称', size: '大小' },
@@ -690,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       document.body.appendChild(toast);
     }
-    const colors = { success: 'var(--c-success)', error: 'var(--c-error)', accent: 'var(--c-accent)' };
+    const colors = { success: 'var(--c-success)', error: 'var(--c-error)', accent: 'var(--c-primary)' };
     toast.style.backgroundColor = colors[type] || colors.accent;
     toast.textContent = message; 
     
